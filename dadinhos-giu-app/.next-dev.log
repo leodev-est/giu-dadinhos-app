@@ -1,0 +1,46 @@
+
+> dadinhos-giu-app@0.1.0 dev
+> next dev
+
+▲ Next.js 16.2.3 (Turbopack)
+- Local:         http://localhost:3000
+- Network:       http://192.168.15.10:3000
+- Environments: .env
+✓ Ready in 377ms
+Creating turbopack project {
+  dir: 'C:\\Users\\leona\\OneDrive\\Desktop\\Projeto Dadinhos Giu\\dadinhos-giu-app',
+  testMode: true
+}
+
+ GET / 200 in 628ms (next.js: 79ms, proxy.ts: 123ms, application-code: 426ms)
+ GET /api/produtos 200 in 654ms (next.js: 399ms, proxy.ts: 122ms, application-code: 134ms)
+ GET /kanban 200 in 408ms (next.js: 340ms, proxy.ts: 13ms, application-code: 55ms)
+ GET /api/pedidos 200 in 282ms (next.js: 188ms, proxy.ts: 4ms, application-code: 91ms)
+ GET /dashboard 200 in 490ms (next.js: 364ms, proxy.ts: 5ms, application-code: 121ms)
+ GET /admin/produtos 200 in 274ms (next.js: 250ms, proxy.ts: 6ms, application-code: 19ms)
+ GET /api/produtos 200 in 28ms (next.js: 5ms, proxy.ts: 11ms, application-code: 12ms)
+ GET /api/produtos 200 in 27ms (next.js: 10ms, proxy.ts: 8ms, application-code: 9ms)
+ PATCH /api/produtos/3a1c1c8b-783d-47f8-9123-32e1c0767c4d 200 in 1097ms (next.js: 1015ms, proxy.ts: 8ms, application-code: 74ms)
+ GET / 200 in 23ms (next.js: 4ms, proxy.ts: 3ms, application-code: 16ms)
+ GET /api/produtos 200 in 61ms (next.js: 5ms, proxy.ts: 9ms, application-code: 48ms)
+ GET /api/produtos 200 in 63ms (next.js: 10ms, proxy.ts: 9ms, application-code: 44ms)
+ GET /api/produtos 200 in 55ms (next.js: 4ms, proxy.ts: 5ms, application-code: 46ms)
+ GET /api/produtos 200 in 57ms (next.js: 8ms, proxy.ts: 5ms, application-code: 45ms)
+ GET /kanban 200 in 20ms (next.js: 3ms, proxy.ts: 3ms, application-code: 14ms)
+ GET /api/pedidos 200 in 53ms (next.js: 7ms, proxy.ts: 4ms, application-code: 42ms)
+ GET /api/pedidos 200 in 56ms (next.js: 4ms, proxy.ts: 4ms, application-code: 48ms)
+ GET /dashboard 200 in 74ms (next.js: 3ms, proxy.ts: 3ms, application-code: 68ms)
+ GET /kanban 200 in 17ms (next.js: 3ms, proxy.ts: 3ms, application-code: 12ms)
+ GET /api/pedidos 200 in 18ms (next.js: 4ms, proxy.ts: 6ms, application-code: 8ms)
+ GET /api/pedidos 200 in 18ms (next.js: 6ms, proxy.ts: 6ms, application-code: 6ms)
+ PATCH /api/pedidos/3e2e9b83-d763-49fe-8dbc-59132ae7c8fe 200 in 937ms (next.js: 846ms, proxy.ts: 4ms, application-code: 88ms)
+ GET /admin/pedidos/bf09f76a-f6aa-4b92-ad9d-0aa5a6e848c0 200 in 649ms (next.js: 616ms, proxy.ts: 3ms, application-code: 30ms)
+ GET /api/pedidos/bf09f76a-f6aa-4b92-ad9d-0aa5a6e848c0 200 in 34ms (next.js: 16ms, proxy.ts: 9ms, application-code: 9ms)
+ GET /api/pedidos/bf09f76a-f6aa-4b92-ad9d-0aa5a6e848c0 200 in 74ms (next.js: 13ms, proxy.ts: 8ms, application-code: 53ms)
+ GET /admin/pedidos 200 in 286ms (next.js: 259ms, proxy.ts: 4ms, application-code: 23ms)
+ GET /api/pedidos 200 in 59ms (next.js: 6ms, proxy.ts: 7ms, application-code: 46ms)
+ GET /api/pedidos 200 in 98ms (next.js: 3ms, proxy.ts: 9ms, application-code: 86ms)
+ PATCH /api/pedidos/3e2e9b83-d763-49fe-8dbc-59132ae7c8fe 200 in 36ms (next.js: 10ms, proxy.ts: 4ms, application-code: 21ms)
+ GET /admin/pedidos/3e2e9b83-d763-49fe-8dbc-59132ae7c8fe 200 in 32ms (next.js: 10ms, proxy.ts: 3ms, application-code: 19ms)
+ GET /api/pedidos/3e2e9b83-d763-49fe-8dbc-59132ae7c8fe 200 in 39ms (next.js: 14ms, proxy.ts: 6ms, application-code: 19ms)
+ GET /api/pedidos/3e2e9b83-d763-49fe-8dbc-59132ae7c8fe 200 in 111ms (next.js: 19ms, proxy.ts: 6ms, application-code: 86ms)

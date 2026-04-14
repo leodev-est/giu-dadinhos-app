@@ -1,0 +1,72 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum OrderStatus {
+  PENDING
+  CONFIRMED
+  IN_PROGRESS
+  COMPLETED
+  CANCELED
+}
+
+model Customer {
+  id        String   @id @default(uuid())
+  name      String
+  phone     String   @unique
+  createdAt DateTime @default(now())
+
+  orders    Order[]
+}
+
+model Product {
+  id        String   @id @default(uuid())
+  name      String
+  price     Decimal  @db.Decimal(10, 2)
+  active    Boolean  @default(true)
+  stockQuantity Int  @default(0)
+  createdAt DateTime @default(now())
+
+  items     OrderItem[]
+}
+
+model Order {
+  id         String      @id @default(uuid())
+  customerId String
+  status     OrderStatus @default(PENDING)
+  totalPrice Decimal     @db.Decimal(10, 2)
+  desiredDate String?
+  zipCode String?
+  street String?
+  neighborhood String?
+  city String?
+  state String?
+  addressNumber String?
+  addressComplement String?
+  notes      String?
+  createdAt  DateTime    @default(now())
+
+  customer   Customer    @relation(fields: [customerId], references: [id])
+  items      OrderItem[]
+
+  @@index([customerId, createdAt])
+}
+
+model OrderItem {
+  id        String  @id @default(uuid())
+  orderId   String
+  productId String
+  quantity  Int
+  price     Decimal @db.Decimal(10, 2)
+
+  order     Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  product   Product @relation(fields: [productId], references: [id])
+
+  @@index([orderId])
+  @@index([productId])
+  @@unique([orderId, productId])
+}
