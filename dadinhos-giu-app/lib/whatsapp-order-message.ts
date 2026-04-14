@@ -1,4 +1,9 @@
-import { formatOrderAddress, formatOrderDesiredDate } from "@/lib/order-formatters";
+import {
+  formatDeliveryMethodLabel,
+  formatOrderAddress,
+  formatOrderDesiredDate,
+  type DeliveryMethod,
+} from "@/lib/order-formatters";
 import { orderStatusConfig } from "@/lib/order-status";
 
 export type WhatsAppOrderStatus =
@@ -11,6 +16,7 @@ export type WhatsAppOrderStatus =
 export type WhatsAppOrderMessageInput = {
   id: string;
   status: WhatsAppOrderStatus;
+  deliveryMethod?: DeliveryMethod | null;
   totalPrice: number;
   desiredDate?: string | null;
   zipCode?: string | null;
@@ -46,6 +52,34 @@ function summarizeItems(order: WhatsAppOrderMessageInput) {
     .join(", ");
 }
 
+export function buildPickupWhatsAppMessage(input: {
+  customerName: string;
+  desiredDate?: string | null;
+  items: Array<{
+    quantity: number;
+    productName: string;
+  }>;
+}) {
+  const itemsSummary = input.items
+    .map((item) => `${item.productName} x${item.quantity}`)
+    .join(", ");
+  const desiredDate = formatOrderDesiredDate(input.desiredDate);
+
+  const lines = [
+    "Ola. Fiz um pedido de dadinho e gostaria de retirar.",
+    "",
+    `Pedido: ${itemsSummary}`,
+  ];
+
+  if (desiredDate) {
+    lines.push(`Data desejada: ${desiredDate}`);
+  }
+
+  lines.push("", "Qual horario posso passar para retirar?");
+
+  return lines.join("\n");
+}
+
 export function buildWhatsAppOrderMessage(
   order: WhatsAppOrderMessageInput,
   templateStatus: WhatsAppOrderStatus,
@@ -55,6 +89,7 @@ export function buildWhatsAppOrderMessage(
   const desiredDate = formatOrderDesiredDate(order.desiredDate);
   const address = formatOrderAddress(order);
   const statusConfig = orderStatusConfig[templateStatus];
+  const deliveryMethod = formatDeliveryMethodLabel(order.deliveryMethod);
 
   const templates: Record<WhatsAppOrderStatus, string[]> = {
     CREATED: [
@@ -106,8 +141,14 @@ export function buildWhatsAppOrderMessage(
     lines.push(`Para quando: ${desiredDate}`);
   }
 
-  if (address) {
+  lines.push(`Recebimento: ${deliveryMethod}`);
+
+  if (order.deliveryMethod !== "PICKUP" && address) {
     lines.push(`Endereco: ${address}`);
+  }
+
+  if (order.deliveryMethod === "PICKUP") {
+    lines.push("Retirada combinada diretamente com a Giu.");
   }
 
   if (order.notes?.trim()) {

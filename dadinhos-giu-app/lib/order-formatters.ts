@@ -8,6 +8,8 @@ type OrderAddressInput = {
   addressComplement?: string | null;
 };
 
+export type DeliveryMethod = "DELIVERY" | "PICKUP";
+
 export function formatOrderDesiredDate(desiredDate?: string | null) {
   if (!desiredDate) {
     return null;
@@ -53,4 +55,12 @@ export function formatOrderAddress(address: OrderAddressInput) {
     .join(" - ");
 
   return fullAddress || null;
+}
+
+export function formatDeliveryMethodLabel(deliveryMethod?: DeliveryMethod | null) {
+  if (deliveryMethod === "PICKUP") {
+    return "Retirada";
+  }
+
+  return "Entrega";
 }

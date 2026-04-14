@@ -24,6 +24,7 @@ const createOrderSchema = z.object({
       }),
     )
     .min(1, "O pedido deve ter ao menos um item."),
+  deliveryMethod: z.enum(["DELIVERY", "PICKUP"]),
   desiredDate: z
     .string()
     .trim()
@@ -67,6 +68,7 @@ type CustomerRecord = {
 type CreatedOrder = {
   id: string;
   status: string;
+  deliveryMethod: "DELIVERY" | "PICKUP";
   totalPrice: DecimalLike;
   desiredDate?: string | null;
   zipCode?: string | null;
@@ -136,6 +138,23 @@ export async function POST(request: Request) {
       );
     }
 
+    if (
+      parsedBody.data.deliveryMethod === "DELIVERY" &&
+      (!getOptionalString(parsedBody.data.zipCode) ||
+        !getOptionalString(parsedBody.data.street) ||
+        !getOptionalString(parsedBody.data.neighborhood) ||
+        !getOptionalString(parsedBody.data.city) ||
+        !getOptionalString(parsedBody.data.state) ||
+        !getOptionalString(parsedBody.data.addressNumber))
+    ) {
+      return Response.json(
+        {
+          error: "Preencha o endereco completo para entrega.",
+        },
+        { status: 400 },
+      );
+    }
+
     const normalizedItems = normalizeItems(parsedBody.data.items);
     const productIds = normalizedItems.map((item) => item.productId);
 
@@ -197,23 +216,12 @@ export async function POST(request: Request) {
           );
         }
 
-        if (product.stockQuantity <= 0) {
-          throw new BadRequestError(
-            `${product.name} esta indisponivel no momento.`,
-          );
-        }
-
-        if (product.stockQuantity < item.quantity) {
-          throw new BadRequestError(
-            `Estoque insuficiente para ${product.name}. Disponivel: ${product.stockQuantity}.`,
-          );
-        }
-
         return {
           productId: product.id,
           productName: product.name,
           quantity: item.quantity,
           price: product.price,
+          stockQuantity: product.stockQuantity,
           lineTotal: product.price.toNumber() * item.quantity,
         };
       });
@@ -224,17 +232,21 @@ export async function POST(request: Request) {
       );
 
       for (const item of orderItems) {
+        if (item.stockQuantity <= 0) {
+          continue;
+        }
+
         const updatedProduct = await tx.product.updateMany({
           where: {
             id: item.productId,
             active: true,
             stockQuantity: {
-              gte: item.quantity,
+              gt: 0,
             },
           },
           data: {
             stockQuantity: {
-              decrement: item.quantity,
+              decrement: Math.min(item.quantity, item.stockQuantity),
             },
           },
         });
@@ -250,29 +262,37 @@ export async function POST(request: Request) {
         data: {
           customerId: customer.id,
           status: mapApiStatusToDb("CREATED"),
+          deliveryMethod: parsedBody.data.deliveryMethod,
           totalPrice: totalPrice.toFixed(2),
           ...(getOptionalString(parsedBody.data.desiredDate)
             ? { desiredDate: parsedBody.data.desiredDate }
             : {}),
-          ...(getOptionalString(parsedBody.data.zipCode)
+          ...(parsedBody.data.deliveryMethod === "DELIVERY" &&
+          getOptionalString(parsedBody.data.zipCode)
             ? { zipCode: parsedBody.data.zipCode }
             : {}),
-          ...(getOptionalString(parsedBody.data.street)
+          ...(parsedBody.data.deliveryMethod === "DELIVERY" &&
+          getOptionalString(parsedBody.data.street)
             ? { street: parsedBody.data.street }
             : {}),
-          ...(getOptionalString(parsedBody.data.neighborhood)
+          ...(parsedBody.data.deliveryMethod === "DELIVERY" &&
+          getOptionalString(parsedBody.data.neighborhood)
             ? { neighborhood: parsedBody.data.neighborhood }
             : {}),
-          ...(getOptionalString(parsedBody.data.city)
+          ...(parsedBody.data.deliveryMethod === "DELIVERY" &&
+          getOptionalString(parsedBody.data.city)
             ? { city: parsedBody.data.city }
             : {}),
-          ...(getOptionalString(parsedBody.data.state)
+          ...(parsedBody.data.deliveryMethod === "DELIVERY" &&
+          getOptionalString(parsedBody.data.state)
             ? { state: parsedBody.data.state }
             : {}),
-          ...(getOptionalString(parsedBody.data.addressNumber)
+          ...(parsedBody.data.deliveryMethod === "DELIVERY" &&
+          getOptionalString(parsedBody.data.addressNumber)
             ? { addressNumber: parsedBody.data.addressNumber }
             : {}),
-          ...(getOptionalString(parsedBody.data.addressComplement)
+          ...(parsedBody.data.deliveryMethod === "DELIVERY" &&
+          getOptionalString(parsedBody.data.addressComplement)
             ? { addressComplement: parsedBody.data.addressComplement }
             : {}),
           ...(getOptionalString(parsedBody.data.notes)
@@ -306,6 +326,7 @@ export async function POST(request: Request) {
       {
         id: order.id,
         status: mapDbStatusToApi(order.status),
+        deliveryMethod: order.deliveryMethod,
         totalPrice: order.totalPrice.toNumber(),
         desiredDate: order.desiredDate ?? null,
         zipCode: order.zipCode ?? null,
@@ -365,6 +386,7 @@ export async function POST(request: Request) {
 type ListedOrder = {
   id: string;
   status: string;
+  deliveryMethod: "DELIVERY" | "PICKUP";
   totalPrice: DecimalLike;
   desiredDate?: string | null;
   zipCode?: string | null;
@@ -420,6 +442,7 @@ export async function GET() {
       orders.map((order) => ({
         id: order.id,
         status: mapDbStatusToApi(order.status),
+        deliveryMethod: order.deliveryMethod,
         totalPrice: order.totalPrice.toNumber(),
         desiredDate: order.desiredDate ?? null,
         zipCode: order.zipCode ?? null,

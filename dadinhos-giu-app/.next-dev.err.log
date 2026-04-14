@@ -1,0 +1,447 @@
+Persisting failed: Unable to write SST file 00000416.sst
+
+Caused by:
+    O sistema não pode encontrar o caminho especificado. (os error 3)
+Persisting failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
+Compaction failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
+Compaction failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
+
+thread 'tokio-runtime-worker' (15032) panicked at turbopack\crates\turbo-tasks-backend\src\backend\operation\mod.rs:619:14:
+Failed to lookup task ids: Looking up task id for CachedTaskType { native_fn: NativeFunction { name: "get_written_endpoint_with_issues_operation", global_name: "next_napi_bindings::next_api::endpoint::get_written_endpoint_with_issues_operation", .. }, this: None, arg: (OperationVc { node: RawVc::TaskOutput(558) },) } from database failed
+
+Caused by:
+    0: Unable to open static sorted file referenced from 00000096.meta
+    1: Unable to open static sorted file 00000092.sst
+    2: Failed to open SST file C:\Users\leona\OneDrive\Desktop\Projeto Dadinhos Giu\dadinhos-giu-app\.next\dev\cache/turbopack\c573e8c4\00000092.sst
+    3: O sistema não pode encontrar o caminho especificado. (os error 3)
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+-----
+[1m[31mFATAL[39m[0m: An unexpected Turbopack error occurred. A panic log has been written to C:\Users\leona\AppData\Local\Temp\next-panic-2330d444f62b780827ba4d0a49c25c75.log.
+
+To help make Turbopack better, report this error by clicking here: https://bugs.nextjs.org/search?category=turbopack-error-report&title=Turbopack%20Error%3A%20Failed%20to%20lookup%20task%20ids%3A%20Looking%20up%20task%20id%20for%20CachedTaskType%20%7B%20native_fn%3A%20NativeFunction%20%7B%20name%3A%20%22get_written_endpoint_with_issues_operation%22%2C%20global_name%3A%20%22next_napi_bindings%3A%3Anext_api%3A%3Aendpoint%3A%3Aget_written_endpoint_with_issues_operation%22%2C%20..%20%7D%2C%20this%3A%20None%2C%20arg%3A%20%28OperationVc%20%7B%20node%3A%20RawVc%3A%3ATaskOutput%28558%29%20%7D%2C%29%20%7D%20from%20database%20failed&body=Turbopack%20version%3A%20%60c573e8c4%60%0ANext.js%20version%3A%20%600.0.0%60%0A%0AError%20message%3A%0A%60%60%60%0AFailed%20to%20lookup%20task%20ids%3A%20Looking%20up%20task%20id%20for%20CachedTaskType%20%7B%20native_fn%3A%20NativeFunction%20%7B%20name%3A%20%22get_written_endpoint_with_issues_operation%22%2C%20global_name%3A%20%22next_napi_bindings%3A%3Anext_api%3A%3Aendpoint%3A%3Aget_written_endpoint_with_issues_operation%22%2C%20..%20%7D%2C%20this%3A%20None%2C%20arg%3A%20%28OperationVc%20%7B%20node%3A%20RawVc%3A%3ATaskOutput%28558%29%20%7D%2C%29%20%7D%20from%20database%20failed%0A%0ADebug%20info%3A%0A-%20Failed%20to%20lookup%20task%20ids%3A%20Looking%20up%20task%20id%20for%20CachedTaskType%20%7B%20native_fn%3A%20NativeFunction%20%7B%20name%3A%20%22get_written_endpoint_with_issues_operation%22%2C%20global_name%3A%20%22next_napi_bindings%3A%3Anext_api%3A%3Aendpoint%3A%3Aget_written_endpoint_with_issues_operation%22%2C%20..%20%7D%2C%20this%3A%20None%2C%20arg%3A%20%28OperationVc%20%7B%20node%3A%20RawVc%3A%3ATaskOutput%28558%29%20%7D%2C%29%20%7D%20from%20database%20failed%0A%20%20%0A%20%20Caused%20by%3A%0A%20%20%20%20%20%200%3A%20Unable%20to%20open%20static%20sorted%20file%20referenced%20from%2000000096.meta%0A%20%20%20%20%20%201%3A%20Unable%20to%20open%20static%20sorted%20file%2000000092.sst%0A%20%20%20%20%20%202%3A%20Failed%20to%20open%20SST%20file%20C%3A%5CUsers%5Cleona%5COneDrive%5CDesktop%5CProjeto%20Dadinhos%20Giu%5Cdadinhos-giu-app%5C.next%5Cdev%5Ccache%2Fturbopack%5Cc573e8c4%5C00000092.sst%0A%20%20%20%20%20%203%3A%20O%20sistema%20n%C3%A3o%20pode%20encontrar%20o%20caminho%20especificado.%20%28os%20error%203%29%0A%60%60%60&labels=Turbopack,Turbopack%20Panic%20Backtrace
+-----
+
+⨯ Error [TurbopackInternalError]: Failed to lookup task ids: Looking up task id for CachedTaskType { native_fn: NativeFunction { name: "get_written_endpoint_with_issues_operation", global_name: "next_napi_bindings::next_api::endpoint::get_written_endpoint_with_issues_operation", .. }, this: None, arg: (OperationVc { node: RawVc::TaskOutput(558) },) } from database failed
+
+Debug info:
+- Failed to lookup task ids: Looking up task id for CachedTaskType { native_fn: NativeFunction { name: "get_written_endpoint_with_issues_operation", global_name: "next_napi_bindings::next_api::endpoint::get_written_endpoint_with_issues_operation", .. }, this: None, arg: (OperationVc { node: RawVc::TaskOutput(558) },) } from database failed
+  
+  Caused by:
+      0: Unable to open static sorted file referenced from 00000096.meta
+      1: Unable to open static sorted file 00000092.sst
+      2: Failed to open SST file C:\Users\leona\OneDrive\Desktop\Projeto Dadinhos Giu\dadinhos-giu-app\.next\dev\cache/turbopack\c573e8c4\00000092.sst
+      3: O sistema não pode encontrar o caminho especificado. (os error 3)
+    at <unknown> (TurbopackInternalError: Failed to lookup task ids: Looking up task id for CachedTaskType { native_fn: NativeFunction { name: "get_written_endpoint_with_issues_operation", global_name: "next_napi_bindings::next_api::endpoint::get_written_endpoint_with_issues_operation", .. }, this: None, arg: (OperationVc { node: RawVc::TaskOutput(558) },) } from database failed) {
+  location: 'turbopack\\crates\\turbo-tasks-backend\\src\\backend\\operation\\mod.rs:619:14'
+}
+
+thread 'tokio-runtime-worker' (10016) panicked at turbopack\crates\turbo-tasks-backend\src\backend\operation\mod.rs:619:14:
+Failed to lookup task ids: Looking up task id for CachedTaskType { native_fn: NativeFunction { name: "get_written_endpoint_with_issues_operation", global_name: "next_napi_bindings::next_api::endpoint::get_written_endpoint_with_issues_operation", .. }, this: None, arg: (OperationVc { node: RawVc::TaskOutput(558) },) } from database failed
+
+Caused by:
+    0: Unable to open static sorted file referenced from 00000096.meta
+    1: Unable to open static sorted file 00000092.sst
+    2: Failed to open SST file C:\Users\leona\OneDrive\Desktop\Projeto Dadinhos Giu\dadinhos-giu-app\.next\dev\cache/turbopack\c573e8c4\00000092.sst
+    3: O sistema não pode encontrar o caminho especificado. (os error 3)
+Error [TurbopackInternalError]: Failed to lookup task ids: Looking up task id for CachedTaskType { native_fn: NativeFunction { name: "get_written_endpoint_with_issues_operation", global_name: "next_napi_bindings::next_api::endpoint::get_written_endpoint_with_issues_operation", .. }, this: None, arg: (OperationVc { node: RawVc::TaskOutput(558) },) } from database failed
+
+Debug info:
+- Failed to lookup task ids: Looking up task id for CachedTaskType { native_fn: NativeFunction { name: "get_written_endpoint_with_issues_operation", global_name: "next_napi_bindings::next_api::endpoint::get_written_endpoint_with_issues_operation", .. }, this: None, arg: (OperationVc { node: RawVc::TaskOutput(558) },) } from database failed
+  
+  Caused by:
+      0: Unable to open static sorted file referenced from 00000096.meta
+      1: Unable to open static sorted file 00000092.sst
+      2: Failed to open SST file C:\Users\leona\OneDrive\Desktop\Projeto Dadinhos Giu\dadinhos-giu-app\.next\dev\cache/turbopack\c573e8c4\00000092.sst
+      3: O sistema não pode encontrar o caminho especificado. (os error 3)
+    at <unknown> (TurbopackInternalError: Failed to lookup task ids: Looking up task id for CachedTaskType { native_fn: NativeFunction { name: "get_written_endpoint_with_issues_operation", global_name: "next_napi_bindings::next_api::endpoint::get_written_endpoint_with_issues_operation", .. }, this: None, arg: (OperationVc { node: RawVc::TaskOutput(558) },) } from database failed) {
+  location: 'turbopack\\crates\\turbo-tasks-backend\\src\\backend\\operation\\mod.rs:619:14'
+}
+
+thread 'tokio-runtime-worker' (10016) panicked at turbopack\crates\turbo-tasks-backend\src\backend\operation\mod.rs:619:14:
+Failed to lookup task ids: Looking up task id for CachedTaskType { native_fn: NativeFunction { name: "get_written_endpoint_with_issues_operation", global_name: "next_napi_bindings::next_api::endpoint::get_written_endpoint_with_issues_operation", .. }, this: None, arg: (OperationVc { node: RawVc::TaskOutput(558) },) } from database failed
+
+Caused by:
+    0: Unable to open static sorted file referenced from 00000096.meta
+    1: Unable to open static sorted file 00000092.sst
+    2: Failed to open SST file C:\Users\leona\OneDrive\Desktop\Projeto Dadinhos Giu\dadinhos-giu-app\.next\dev\cache/turbopack\c573e8c4\00000092.sst
+    3: O sistema não pode encontrar o caminho especificado. (os error 3)
+⨯ Error [TurbopackInternalError]: Failed to lookup task ids: Looking up task id for CachedTaskType { native_fn: NativeFunction { name: "get_written_endpoint_with_issues_operation", global_name: "next_napi_bindings::next_api::endpoint::get_written_endpoint_with_issues_operation", .. }, this: None, arg: (OperationVc { node: RawVc::TaskOutput(558) },) } from database failed
+
+Debug info:
+- Failed to lookup task ids: Looking up task id for CachedTaskType { native_fn: NativeFunction { name: "get_written_endpoint_with_issues_operation", global_name: "next_napi_bindings::next_api::endpoint::get_written_endpoint_with_issues_operation", .. }, this: None, arg: (OperationVc { node: RawVc::TaskOutput(558) },) } from database failed
+  
+  Caused by:
+      0: Unable to open static sorted file referenced from 00000096.meta
+      1: Unable to open static sorted file 00000092.sst
+      2: Failed to open SST file C:\Users\leona\OneDrive\Desktop\Projeto Dadinhos Giu\dadinhos-giu-app\.next\dev\cache/turbopack\c573e8c4\00000092.sst
+      3: O sistema não pode encontrar o caminho especificado. (os error 3)
+    at <unknown> (TurbopackInternalError: Failed to lookup task ids: Looking up task id for CachedTaskType { native_fn: NativeFunction { name: "get_written_endpoint_with_issues_operation", global_name: "next_napi_bindings::next_api::endpoint::get_written_endpoint_with_issues_operation", .. }, this: None, arg: (OperationVc { node: RawVc::TaskOutput(558) },) } from database failed) {
+  location: 'turbopack\\crates\\turbo-tasks-backend\\src\\backend\\operation\\mod.rs:619:14'
+}
+
+thread 'tokio-runtime-worker' (15032) panicked at turbopack\crates\turbo-tasks-backend\src\backend\operation\mod.rs:619:14:
+Failed to lookup task ids: Looking up task id for CachedTaskType { native_fn: NativeFunction { name: "get_written_endpoint_with_issues_operation", global_name: "next_napi_bindings::next_api::endpoint::get_written_endpoint_with_issues_operation", .. }, this: None, arg: (OperationVc { node: RawVc::TaskOutput(558) },) } from database failed
+
+Caused by:
+    0: Unable to open static sorted file referenced from 00000096.meta
+    1: Unable to open static sorted file 00000092.sst
+    2: Failed to open SST file C:\Users\leona\OneDrive\Desktop\Projeto Dadinhos Giu\dadinhos-giu-app\.next\dev\cache/turbopack\c573e8c4\00000092.sst
+    3: O sistema não pode encontrar o caminho especificado. (os error 3)
+Error [TurbopackInternalError]: Failed to lookup task ids: Looking up task id for CachedTaskType { native_fn: NativeFunction { name: "get_written_endpoint_with_issues_operation", global_name: "next_napi_bindings::next_api::endpoint::get_written_endpoint_with_issues_operation", .. }, this: None, arg: (OperationVc { node: RawVc::TaskOutput(558) },) } from database failed
+
+Debug info:
+- Failed to lookup task ids: Looking up task id for CachedTaskType { native_fn: NativeFunction { name: "get_written_endpoint_with_issues_operation", global_name: "next_napi_bindings::next_api::endpoint::get_written_endpoint_with_issues_operation", .. }, this: None, arg: (OperationVc { node: RawVc::TaskOutput(558) },) } from database failed
+  
+  Caused by:
+      0: Unable to open static sorted file referenced from 00000096.meta
+      1: Unable to open static sorted file 00000092.sst
+      2: Failed to open SST file C:\Users\leona\OneDrive\Desktop\Projeto Dadinhos Giu\dadinhos-giu-app\.next\dev\cache/turbopack\c573e8c4\00000092.sst
+      3: O sistema não pode encontrar o caminho especificado. (os error 3)
+    at <unknown> (TurbopackInternalError: Failed to lookup task ids: Looking up task id for CachedTaskType { native_fn: NativeFunction { name: "get_written_endpoint_with_issues_operation", global_name: "next_napi_bindings::next_api::endpoint::get_written_endpoint_with_issues_operation", .. }, this: None, arg: (OperationVc { node: RawVc::TaskOutput(558) },) } from database failed) {
+  location: 'turbopack\\crates\\turbo-tasks-backend\\src\\backend\\operation\\mod.rs:619:14'
+}
+
+thread 'tokio-runtime-worker' (15032) panicked at turbopack\crates\turbo-tasks-backend\src\backend\operation\mod.rs:619:14:
+Failed to lookup task ids: Looking up task id for CachedTaskType { native_fn: NativeFunction { name: "get_written_endpoint_with_issues_operation", global_name: "next_napi_bindings::next_api::endpoint::get_written_endpoint_with_issues_operation", .. }, this: None, arg: (OperationVc { node: RawVc::TaskOutput(558) },) } from database failed
+
+Caused by:
+    0: Unable to open static sorted file referenced from 00000096.meta
+    1: Unable to open static sorted file 00000092.sst
+    2: Failed to open SST file C:\Users\leona\OneDrive\Desktop\Projeto Dadinhos Giu\dadinhos-giu-app\.next\dev\cache/turbopack\c573e8c4\00000092.sst
+    3: O sistema não pode encontrar o caminho especificado. (os error 3)
+⨯ Error [TurbopackInternalError]: Failed to lookup task ids: Looking up task id for CachedTaskType { native_fn: NativeFunction { name: "get_written_endpoint_with_issues_operation", global_name: "next_napi_bindings::next_api::endpoint::get_written_endpoint_with_issues_operation", .. }, this: None, arg: (OperationVc { node: RawVc::TaskOutput(558) },) } from database failed
+
+Debug info:
+- Failed to lookup task ids: Looking up task id for CachedTaskType { native_fn: NativeFunction { name: "get_written_endpoint_with_issues_operation", global_name: "next_napi_bindings::next_api::endpoint::get_written_endpoint_with_issues_operation", .. }, this: None, arg: (OperationVc { node: RawVc::TaskOutput(558) },) } from database failed
+  
+  Caused by:
+      0: Unable to open static sorted file referenced from 00000096.meta
+      1: Unable to open static sorted file 00000092.sst
+      2: Failed to open SST file C:\Users\leona\OneDrive\Desktop\Projeto Dadinhos Giu\dadinhos-giu-app\.next\dev\cache/turbopack\c573e8c4\00000092.sst
+      3: O sistema não pode encontrar o caminho especificado. (os error 3)
+    at <unknown> (TurbopackInternalError: Failed to lookup task ids: Looking up task id for CachedTaskType { native_fn: NativeFunction { name: "get_written_endpoint_with_issues_operation", global_name: "next_napi_bindings::next_api::endpoint::get_written_endpoint_with_issues_operation", .. }, this: None, arg: (OperationVc { node: RawVc::TaskOutput(558) },) } from database failed) {
+  location: 'turbopack\\crates\\turbo-tasks-backend\\src\\backend\\operation\\mod.rs:619:14'
+}
+
+thread 'tokio-runtime-worker' (10016) panicked at turbopack\crates\turbo-tasks-backend\src\backend\operation\mod.rs:619:14:
+Failed to lookup task ids: Looking up task id for CachedTaskType { native_fn: NativeFunction { name: "get_written_endpoint_with_issues_operation", global_name: "next_napi_bindings::next_api::endpoint::get_written_endpoint_with_issues_operation", .. }, this: None, arg: (OperationVc { node: RawVc::TaskOutput(558) },) } from database failed
+
+Caused by:
+    0: Unable to open static sorted file referenced from 00000096.meta
+    1: Unable to open static sorted file 00000092.sst
+    2: Failed to open SST file C:\Users\leona\OneDrive\Desktop\Projeto Dadinhos Giu\dadinhos-giu-app\.next\dev\cache/turbopack\c573e8c4\00000092.sst
+    3: O sistema não pode encontrar o caminho especificado. (os error 3)
+Error [TurbopackInternalError]: Failed to lookup task ids: Looking up task id for CachedTaskType { native_fn: NativeFunction { name: "get_written_endpoint_with_issues_operation", global_name: "next_napi_bindings::next_api::endpoint::get_written_endpoint_with_issues_operation", .. }, this: None, arg: (OperationVc { node: RawVc::TaskOutput(558) },) } from database failed
+
+Debug info:
+- Failed to lookup task ids: Looking up task id for CachedTaskType { native_fn: NativeFunction { name: "get_written_endpoint_with_issues_operation", global_name: "next_napi_bindings::next_api::endpoint::get_written_endpoint_with_issues_operation", .. }, this: None, arg: (OperationVc { node: RawVc::TaskOutput(558) },) } from database failed
+  
+  Caused by:
+      0: Unable to open static sorted file referenced from 00000096.meta
+      1: Unable to open static sorted file 00000092.sst
+      2: Failed to open SST file C:\Users\leona\OneDrive\Desktop\Projeto Dadinhos Giu\dadinhos-giu-app\.next\dev\cache/turbopack\c573e8c4\00000092.sst
+      3: O sistema não pode encontrar o caminho especificado. (os error 3)
+    at <unknown> (TurbopackInternalError: Failed to lookup task ids: Looking up task id for CachedTaskType { native_fn: NativeFunction { name: "get_written_endpoint_with_issues_operation", global_name: "next_napi_bindings::next_api::endpoint::get_written_endpoint_with_issues_operation", .. }, this: None, arg: (OperationVc { node: RawVc::TaskOutput(558) },) } from database failed) {
+  location: 'turbopack\\crates\\turbo-tasks-backend\\src\\backend\\operation\\mod.rs:619:14'
+}
+
+thread 'tokio-runtime-worker' (20388) panicked at turbopack\crates\turbo-tasks-backend\src\backend\operation\mod.rs:619:14:
+Failed to lookup task ids: Looking up task id for CachedTaskType { native_fn: NativeFunction { name: "get_written_endpoint_with_issues_operation", global_name: "next_napi_bindings::next_api::endpoint::get_written_endpoint_with_issues_operation", .. }, this: None, arg: (OperationVc { node: RawVc::TaskOutput(558) },) } from database failed
+
+Caused by:
+    0: Unable to open static sorted file referenced from 00000096.meta
+    1: Unable to open static sorted file 00000092.sst
+    2: Failed to open SST file C:\Users\leona\OneDrive\Desktop\Projeto Dadinhos Giu\dadinhos-giu-app\.next\dev\cache/turbopack\c573e8c4\00000092.sst
+    3: O sistema não pode encontrar o caminho especificado. (os error 3)
+⨯ Error [TurbopackInternalError]: Failed to lookup task ids: Looking up task id for CachedTaskType { native_fn: NativeFunction { name: "get_written_endpoint_with_issues_operation", global_name: "next_napi_bindings::next_api::endpoint::get_written_endpoint_with_issues_operation", .. }, this: None, arg: (OperationVc { node: RawVc::TaskOutput(558) },) } from database failed
+
+Debug info:
+- Failed to lookup task ids: Looking up task id for CachedTaskType { native_fn: NativeFunction { name: "get_written_endpoint_with_issues_operation", global_name: "next_napi_bindings::next_api::endpoint::get_written_endpoint_with_issues_operation", .. }, this: None, arg: (OperationVc { node: RawVc::TaskOutput(558) },) } from database failed
+  
+  Caused by:
+      0: Unable to open static sorted file referenced from 00000096.meta
+      1: Unable to open static sorted file 00000092.sst
+      2: Failed to open SST file C:\Users\leona\OneDrive\Desktop\Projeto Dadinhos Giu\dadinhos-giu-app\.next\dev\cache/turbopack\c573e8c4\00000092.sst
+      3: O sistema não pode encontrar o caminho especificado. (os error 3)
+    at <unknown> (TurbopackInternalError: Failed to lookup task ids: Looking up task id for CachedTaskType { native_fn: NativeFunction { name: "get_written_endpoint_with_issues_operation", global_name: "next_napi_bindings::next_api::endpoint::get_written_endpoint_with_issues_operation", .. }, this: None, arg: (OperationVc { node: RawVc::TaskOutput(558) },) } from database failed) {
+  location: 'turbopack\\crates\\turbo-tasks-backend\\src\\backend\\operation\\mod.rs:619:14'
+}
+
+thread 'tokio-runtime-worker' (10016) panicked at turbopack\crates\turbo-tasks-backend\src\backend\operation\mod.rs:619:14:
+Failed to lookup task ids: Looking up task id for CachedTaskType { native_fn: NativeFunction { name: "get_written_endpoint_with_issues_operation", global_name: "next_napi_bindings::next_api::endpoint::get_written_endpoint_with_issues_operation", .. }, this: None, arg: (OperationVc { node: RawVc::TaskOutput(558) },) } from database failed
+
+Caused by:
+    0: Unable to open static sorted file referenced from 00000096.meta
+    1: Unable to open static sorted file 00000092.sst
+    2: Failed to open SST file C:\Users\leona\OneDrive\Desktop\Projeto Dadinhos Giu\dadinhos-giu-app\.next\dev\cache/turbopack\c573e8c4\00000092.sst
+    3: O sistema não pode encontrar o caminho especificado. (os error 3)
+
+thread 'tokio-runtime-worker' (20388) panicked at turbopack\crates\turbo-tasks-backend\src\backend\operation\mod.rs:619:14:
+Error [TurbopackInternalError]: Failed to lookup task ids: Looking up task id for CachedTaskType { native_fn: NativeFunction { name: "get_written_endpoint_with_issues_operation", global_name: "next_napi_bindings::next_api::endpoint::get_written_endpoint_with_issues_operation", .. }, this: None, arg: (OperationVc { node: RawVc::TaskOutput(558) },) } from database failed
+
+Debug info:
+- Failed to lookup task ids: Looking up task id for CachedTaskType { native_fn: NativeFunction { name: "get_written_endpoint_with_issues_operation", global_name: "next_napi_bindings::next_api::endpoint::get_written_endpoint_with_issues_operation", .. }, this: None, arg: (OperationVc { node: RawVc::TaskOutput(558) },) } from database failed
+  
+  Caused by:
+      0: Unable to open static sorted file referenced from 00000096.meta
+      1: Unable to open static sorted file 00000092.sst
+      2: Failed to open SST file C:\Users\leona\OneDrive\Desktop\Projeto Dadinhos Giu\dadinhos-giu-app\.next\dev\cache/turbopack\c573e8c4\00000092.sst
+      3: O sistema não pode encontrar o caminho especificado. (os error 3)
+    at <unknown> (TurbopackInternalError: Failed to lookup task ids: Looking up task id for CachedTaskType { native_fn: NativeFunction { name: "get_written_endpoint_with_issues_operation", global_name: "next_napi_bindings::next_api::endpoint::get_written_endpoint_with_issues_operation", .. }, this: None, arg: (OperationVc { node: RawVc::TaskOutput(558) },) } from database failed) {
+  location: 'turbopack\\crates\\turbo-tasks-backend\\src\\backend\\operation\\mod.rs:619:14'
+}
+Failed to lookup task ids: Looking up task id for CachedTaskType { native_fn: NativeFunction { name: "get_written_endpoint_with_issues_operation", global_name: "next_napi_bindings::next_api::endpoint::get_written_endpoint_with_issues_operation", .. }, this: None, arg: (OperationVc { node: RawVc::TaskOutput(558) },) } from database failed
+
+Caused by:
+    0: Unable to open static sorted file referenced from 00000096.meta
+    1: Unable to open static sorted file 00000092.sst
+    2: Failed to open SST file C:\Users\leona\OneDrive\Desktop\Projeto Dadinhos Giu\dadinhos-giu-app\.next\dev\cache/turbopack\c573e8c4\00000092.sst
+    3: O sistema não pode encontrar o caminho especificado. (os error 3)
+
+thread 'tokio-runtime-worker' (20388) panicked at turbopack\crates\turbo-tasks-backend\src\backend\operation\mod.rs:619:14⨯ Error [TurbopackInternalError]: Failed to lookup task ids: Looking up task id for CachedTaskType { native_fn: NativeFunction { name: "get_written_endpoint_with_issues_operation", global_name: "next_napi_bindings::next_api::endpoint::get_written_endpoint_with_issues_operation", .. }, this: None, arg: (OperationVc { node: RawVc::TaskOutput(558) },) } from database failed
+
+Debug info:
+- Failed to lookup task ids: Looking up task id for CachedTaskType { native_fn: NativeFunction { name: "get_written_endpoint_with_issues_operation", global_name: "next_napi_bindings::next_api::endpoint::get_written_endpoint_with_issues_operation", .. }, this: None, arg: (OperationVc { node: RawVc::TaskOutput(558) },) } from database failed
+  
+  Caused by:
+      0: Unable to open static sorted file referenced from 00000096.meta
+      1: Unable to open static sorted file 00000092.sst
+      2: Failed to open SST file C:\Users\leona\OneDrive\Desktop\Projeto Dadinhos Giu\dadinhos-giu-app\.next\dev\cache/turbopack\c573e8c4\00000092.sst
+      3: O sistema não pode encontrar o caminho especificado. (os error 3)
+    at <unknown> (TurbopackInternalError: Failed to lookup task ids: Looking up task id for CachedTaskType { native_fn: NativeFunction { name: "get_written_endpoint_with_issues_operation", global_name: "next_napi_bindings::next_api::endpoint::get_written_endpoint_with_issues_operation", .. }, this: None, arg: (OperationVc { node: RawVc::TaskOutput(558) },) } from database failed) {
+  location: 'turbopack\\crates\\turbo-tasks-backend\\src\\backend\\operation\\mod.rs:619:14'
+}
+:
+Failed to lookup task ids: Looking up task id for CachedTaskType { native_fn: NativeFunction { name: "get_written_endpoint_with_issues_operation", global_name: "next_napi_bindings::next_api::endpoint::get_written_endpoint_with_issues_operation", .. }, this: None, arg: (OperationVc { node: RawVc::TaskOutput(558) },) } from database failed
+
+Caused by:
+    0: Unable to open static sorted file referenced from 00000096.meta
+    1: Unable to open static sorted file 00000092.sst
+    2: Failed to open SST file C:\Users\leona\OneDrive\Desktop\Projeto Dadinhos Giu\dadinhos-giu-app\.next\dev\cache/turbopack\c573e8c4\00000092.sst
+    3: O sistema não pode encontrar o caminho especificado. (os error 3)
+
+thread 'tokio-runtime-worker' (10016) panicked at turbopack\crates\turbo-tasks-backend\src\backend\operation\mod.rs:619:14⨯ Error [TurbopackInternalError]: Failed to lookup task ids: Looking up task id for CachedTaskType { native_fn: NativeFunction { name: "get_written_endpoint_with_issues_operation", global_name: "next_napi_bindings::next_api::endpoint::get_written_endpoint_with_issues_operation", .. }, this: None, arg: (OperationVc { node: RawVc::TaskOutput(558) },) } from database failed
+
+Debug info:
+- Failed to lookup task ids: Looking up task id for CachedTaskType { native_fn: NativeFunction { name: "get_written_endpoint_with_issues_operation", global_name: "next_napi_bindings::next_api::endpoint::get_written_endpoint_with_issues_operation", .. }, this: None, arg: (OperationVc { node: RawVc::TaskOutput(558) },) } from database failed
+  
+  Caused by:
+      0: Unable to open static sorted file referenced from 00000096.meta
+      1: Unable to open static sorted file 00000092.sst
+      2: Failed to open SST file C:\Users\leona\OneDrive\Desktop\Projeto Dadinhos Giu\dadinhos-giu-app\.next\dev\cache/turbopack\c573e8c4\00000092.sst
+      3: O sistema não pode encontrar o caminho especificado. (os error 3)
+    at <unknown> (TurbopackInternalError: Failed to lookup task ids: Looking up task id for CachedTaskType { native_fn: NativeFunction { name: "get_written_endpoint_with_issues_operation", global_name: "next_napi_bindings::next_api::endpoint::get_written_endpoint_with_issues_operation", .. }, this: None, arg: (OperationVc { node: RawVc::TaskOutput(558) },) } from database failed) {
+  location: 'turbopack\\crates\\turbo-tasks-backend\\src\\backend\\operation\\mod.rs:619:14'
+}
+:
+Failed to lookup task ids: Looking up task id for CachedTaskType { native_fn: NativeFunction { name: "get_written_endpoint_with_issues_operation", global_name: "next_napi_bindings::next_api::endpoint::get_written_endpoint_with_issues_operation", .. }, this: None, arg: (OperationVc { node: RawVc::TaskOutput(558) },) } from database failed
+
+Caused by:
+    0: Unable to open static sorted file referenced from 00000096.meta
+    1: Unable to open static sorted file 00000092.sst
+    2: Failed to open SST file C:\Users\leona\OneDrive\Desktop\Projeto Dadinhos Giu\dadinhos-giu-app\.next\dev\cache/turbopack\c573e8c4\00000092.sst
+    3: O sistema não pode encontrar o caminho especificado. (os error 3)
+
+thread 'tokio-runtime-worker' (15032) panicked at turbopack\crates\turbo-tasks-backend\src\backend\operation\mod.rs:619:14Error [TurbopackInternalError]: Failed to lookup task ids: Looking up task id for CachedTaskType { native_fn: NativeFunction { name: "get_written_endpoint_with_issues_operation", global_name: "next_napi_bindings::next_api::endpoint::get_written_endpoint_with_issues_operation", .. }, this: None, arg: (OperationVc { node: RawVc::TaskOutput(558) },) } from database failed
+
+Debug info:
+- Failed to lookup task ids: Looking up task id for CachedTaskType { native_fn: NativeFunction { name: "get_written_endpoint_with_issues_operation", global_name: "next_napi_bindings::next_api::endpoint::get_written_endpoint_with_issues_operation", .. }, this: None, arg: (OperationVc { node: RawVc::TaskOutput(558) },) } from database failed
+  
+  Caused by:
+      0: Unable to open static sorted file referenced from 00000096.meta
+      1: Unable to open static sorted file 00000092.sst
+      2: Failed to open SST file C:\Users\leona\OneDrive\Desktop\Projeto Dadinhos Giu\dadinhos-giu-app\.next\dev\cache/turbopack\c573e8c4\00000092.sst
+      3: O sistema não pode encontrar o caminho especificado. (os error 3)
+    at <unknown> (TurbopackInternalError: Failed to lookup task ids: Looking up task id for CachedTaskType { native_fn: NativeFunction { name: "get_written_endpoint_with_issues_operation", global_name: "next_napi_bindings::next_api::endpoint::get_written_endpoint_with_issues_operation", .. }, this: None, arg: (OperationVc { node: RawVc::TaskOutput(558) },) } from database failed) {
+  location: 'turbopack\\crates\\turbo-tasks-backend\\src\\backend\\operation\\mod.rs:619:14'
+}
+:
+Failed to lookup task ids: Looking up task id for CachedTaskType { native_fn: NativeFunction { name: "get_written_endpoint_with_issues_operation", global_name: "next_napi_bindings::next_api::endpoint::get_written_endpoint_with_issues_operation", .. }, this: None, arg: (OperationVc { node: RawVc::TaskOutput(558) },) } from database failed
+
+Caused by:
+    0: Unable to open static sorted file referenced from 00000096.meta
+    1: Unable to open static sorted file 00000092.sst
+    2: Failed to open SST file C:\Users\leona\OneDrive\Desktop\Projeto Dadinhos Giu\dadinhos-giu-app\.next\dev\cache/turbopack\c573e8c4\00000092.sst
+    3: O sistema não pode encontrar o caminho especificado. (os error 3)
+
+thread 'tokio-runtime-worker' (20388) panicked at turbopack\crates\turbo-tasks-backend\src\backend\operation\mod.rs:619:14Error [TurbopackInternalError]: Failed to lookup task ids: Looking up task id for CachedTaskType { native_fn: NativeFunction { name: "get_written_endpoint_with_issues_operation", global_name: "next_napi_bindings::next_api::endpoint::get_written_endpoint_with_issues_operation", .. }, this: None, arg: (OperationVc { node: RawVc::TaskOutput(558) },) } from database failed
+
+Debug info:
+- Failed to lookup task ids: Looking up task id for CachedTaskType { native_fn: NativeFunction { name: "get_written_endpoint_with_issues_operation", global_name: "next_napi_bindings::next_api::endpoint::get_written_endpoint_with_issues_operation", .. }, this: None, arg: (OperationVc { node: RawVc::TaskOutput(558) },) } from database failed
+  
+  Caused by:
+      0: Unable to open static sorted file referenced from 00000096.meta
+      1: Unable to open static sorted file 00000092.sst
+      2: Failed to open SST file C:\Users\leona\OneDrive\Desktop\Projeto Dadinhos Giu\dadinhos-giu-app\.next\dev\cache/turbopack\c573e8c4\00000092.sst
+      3: O sistema não pode encontrar o caminho especificado. (os error 3)
+    at <unknown> (TurbopackInternalError: Failed to lookup task ids: Looking up task id for CachedTaskType { native_fn: NativeFunction { name: "get_written_endpoint_with_issues_operation", global_name: "next_napi_bindings::next_api::endpoint::get_written_endpoint_with_issues_operation", .. }, this: None, arg: (OperationVc { node: RawVc::TaskOutput(558) },) } from database failed) {
+  location: 'turbopack\\crates\\turbo-tasks-backend\\src\\backend\\operation\\mod.rs:619:14'
+}
+:
+Failed to lookup task ids: Looking up task id for CachedTaskType { native_fn: NativeFunction { name: "get_written_endpoint_with_issues_operation", global_name: "next_napi_bindings::next_api::endpoint::get_written_endpoint_with_issues_operation", .. }, this: None, arg: (OperationVc { node: RawVc::TaskOutput(558) },) } from database failed
+
+Caused by:
+    0: Unable to open static sorted file referenced from 00000096.meta
+    1: Unable to open static sorted file 00000092.sst
+    2: Failed to open SST file C:\Users\leona\OneDrive\Desktop\Projeto Dadinhos Giu\dadinhos-giu-app\.next\dev\cache/turbopack\c573e8c4\00000092.sst
+    3: O sistema não pode encontrar o caminho especificado. (os error 3)
+
+thread 'tokio-runtime-worker' (16052) panicked at turbopack\crates\turbo-tasks-backend\src\backend\operation\mod.rs:619:14⨯ Error [TurbopackInternalError]: Failed to lookup task ids: Looking up task id for CachedTaskType { native_fn: NativeFunction { name: "get_written_endpoint_with_issues_operation", global_name: "next_napi_bindings::next_api::endpoint::get_written_endpoint_with_issues_operation", .. }, this: None, arg: (OperationVc { node: RawVc::TaskOutput(558) },) } from database failed
+
+Debug info:
+- Failed to lookup task ids: Looking up task id for CachedTaskType { native_fn: NativeFunction { name: "get_written_endpoint_with_issues_operation", global_name: "next_napi_bindings::next_api::endpoint::get_written_endpoint_with_issues_operation", .. }, this: None, arg: (OperationVc { node: RawVc::TaskOutput(558) },) } from database failed
+  
+  Caused by:
+      0: Unable to open static sorted file referenced from 00000096.meta
+      1: Unable to open static sorted file 00000092.sst
+      2: Failed to open SST file C:\Users\leona\OneDrive\Desktop\Projeto Dadinhos Giu\dadinhos-giu-app\.next\dev\cache/turbopack\c573e8c4\00000092.sst
+      3: O sistema não pode encontrar o caminho especificado. (os error 3)
+    at <unknown> (TurbopackInternalError: Failed to lookup task ids: Looking up task id for CachedTaskType { native_fn: NativeFunction { name: "get_written_endpoint_with_issues_operation", global_name: "next_napi_bindings::next_api::endpoint::get_written_endpoint_with_issues_operation", .. }, this: None, arg: (OperationVc { node: RawVc::TaskOutput(558) },) } from database failed) {
+  location: 'turbopack\\crates\\turbo-tasks-backend\\src\\backend\\operation\\mod.rs:619:14'
+}
+:
+Failed to lookup task ids: Looking up task id for CachedTaskType { native_fn: NativeFunction { name: "get_written_endpoint_with_issues_operation", global_name: "next_napi_bindings::next_api::endpoint::get_written_endpoint_with_issues_operation", .. }, this: None, arg: (OperationVc { node: RawVc::TaskOutput(558) },) } from database failed
+
+Caused by:
+    0: Unable to open static sorted file referenced from 00000096.meta
+    1: Unable to open static sorted file 00000092.sst
+    2: Failed to open SST file C:\Users\leona\OneDrive\Desktop\Projeto Dadinhos Giu\dadinhos-giu-app\.next\dev\cache/turbopack\c573e8c4\00000092.sst
+    3: O sistema não pode encontrar o caminho especificado. (os error 3)
+
+thread 'tokio-runtime-worker' (10016) panicked at turbopack\crates\turbo-tasks-backend\src\backend\operation\mod.rs:619:14⨯ Error [TurbopackInternalError]: Failed to lookup task ids: Looking up task id for CachedTaskType { native_fn: NativeFunction { name: "get_written_endpoint_with_issues_operation", global_name: "next_napi_bindings::next_api::endpoint::get_written_endpoint_with_issues_operation", .. }, this: None, arg: (OperationVc { node: RawVc::TaskOutput(558) },) } from database failed
+
+Debug info:
+- Failed to lookup task ids: Looking up task id for CachedTaskType { native_fn: NativeFunction { name: "get_written_endpoint_with_issues_operation", global_name: "next_napi_bindings::next_api::endpoint::get_written_endpoint_with_issues_operation", .. }, this: None, arg: (OperationVc { node: RawVc::TaskOutput(558) },) } from database failed
+  
+  Caused by:
+      0: Unable to open static sorted file referenced from 00000096.meta
+      1: Unable to open static sorted file 00000092.sst
+      2: Failed to open SST file C:\Users\leona\OneDrive\Desktop\Projeto Dadinhos Giu\dadinhos-giu-app\.next\dev\cache/turbopack\c573e8c4\00000092.sst
+      3: O sistema não pode encontrar o caminho especificado. (os error 3)
+    at <unknown> (TurbopackInternalError: Failed to lookup task ids: Looking up task id for CachedTaskType { native_fn: NativeFunction { name: "get_written_endpoint_with_issues_operation", global_name: "next_napi_bindings::next_api::endpoint::get_written_endpoint_with_issues_operation", .. }, this: None, arg: (OperationVc { node: RawVc::TaskOutput(558) },) } from database failed) {
+  location: 'turbopack\\crates\\turbo-tasks-backend\\src\\backend\\operation\\mod.rs:619:14'
+}
+:
+Failed to lookup task ids: Looking up task id for CachedTaskType { native_fn: NativeFunction { name: "get_written_endpoint_with_issues_operation", global_name: "next_napi_bindings::next_api::endpoint::get_written_endpoint_with_issues_operation", .. }, this: None, arg: (OperationVc { node: RawVc::TaskOutput(558) },) } from database failed
+
+Caused by:
+    0: Unable to open static sorted file referenced from 00000096.meta
+    1: Unable to open static sorted file 00000092.sst
+    2: Failed to open SST file C:\Users\leona\OneDrive\Desktop\Projeto Dadinhos Giu\dadinhos-giu-app\.next\dev\cache/turbopack\c573e8c4\00000092.sst
+    3: O sistema não pode encontrar o caminho especificado. (os error 3)
+
+thread 'tokio-runtime-worker' (16052) panicked at turbopack\crates\turbo-tasks-backend\src\backend\operation\mod.rs:619:14:
+Failed to lookup task ids: Looking up task id for CachedTaskType { native_fn: NativeFunction { name: "get_written_endpoint_with_issues_operation", global_name: "next_napi_bindings::next_api::endpoint::get_written_endpoint_with_issues_operation", .. }, this: None, arg: (OperationVc { node: RawVc::TaskOutput(558) },) } from database failed
+
+Caused by:
+    0: Unable to open static sorted file referenced from 00000096.meta
+    1: Unable to open static sorted file 00000092.sst
+    2: Failed to open SST file C:\Users\leona\OneDrive\Desktop\Projeto Dadinhos Giu\dadinhos-giu-app\.next\dev\cache/turbopack\c573e8c4\00000092.sst
+    3: O sistema não pode encontrar o caminho especificado. (os error 3)
+Error [TurbopackInternalError]: Failed to lookup task ids: Looking up task id for CachedTaskType { native_fn: NativeFunction { name: "get_written_endpoint_with_issues_operation", global_name: "next_napi_bindings::next_api::endpoint::get_written_endpoint_with_issues_operation", .. }, this: None, arg: (OperationVc { node: RawVc::TaskOutput(558) },) } from database failed
+
+Debug info:
+- Failed to lookup task ids: Looking up task id for CachedTaskType { native_fn: NativeFunction { name: "get_written_endpoint_with_issues_operation", global_name: "next_napi_bindings::next_api::endpoint::get_written_endpoint_with_issues_operation", .. }, this: None, arg: (OperationVc { node: RawVc::TaskOutput(558) },) } from database failed
+  
+  Caused by:
+      0: Unable to open static sorted file referenced from 00000096.meta
+      1: Unable to open static sorted file 00000092.sst
+      2: Failed to open SST file C:\Users\leona\OneDrive\Desktop\Projeto Dadinhos Giu\dadinhos-giu-app\.next\dev\cache/turbopack\c573e8c4\00000092.sst
+      3: O sistema não pode encontrar o caminho especificado. (os error 3)
+    at <unknown> (TurbopackInternalError: Failed to lookup task ids: Looking up task id for CachedTaskType { native_fn: NativeFunction { name: "get_written_endpoint_with_issues_operation", global_name: "next_napi_bindings::next_api::endpoint::get_written_endpoint_with_issues_operation", .. }, this: None, arg: (OperationVc { node: RawVc::TaskOutput(558) },) } from database failed) {
+  location: 'turbopack\\crates\\turbo-tasks-backend\\src\\backend\\operation\\mod.rs:619:14'
+}
+
+thread 'tokio-runtime-worker' (16052) panicked at turbopack\crates\turbo-tasks-backend\src\backend\operation\mod.rs:619:Error [TurbopackInternalError]: Failed to lookup task ids: Looking up task id for CachedTaskType { native_fn: NativeFunction { name: "get_written_endpoint_with_issues_operation", global_name: "next_napi_bindings::next_api::endpoint::get_written_endpoint_with_issues_operation", .. }, this: None, arg: (OperationVc { node: RawVc::TaskOutput(558) },) } from database failed
+
+Debug info:
+- Failed to lookup task ids: Looking up task id for CachedTaskType { native_fn: NativeFunction { name: "get_written_endpoint_with_issues_operation", global_name: "next_napi_bindings::next_api::endpoint::get_written_endpoint_with_issues_operation", .. }, this: None, arg: (OperationVc { node: RawVc::TaskOutput(558) },) } from database failed
+  
+  Caused by:
+      0: Unable to open static sorted file referenced from 00000096.meta
+      1: Unable to open static sorted file 00000092.sst
+      2: Failed to open SST file C:\Users\leona\OneDrive\Desktop\Projeto Dadinhos Giu\dadinhos-giu-app\.next\dev\cache/turbopack\c573e8c4\00000092.sst
+      3: O sistema não pode encontrar o caminho especificado. (os error 3)
+    at <unknown> (TurbopackInternalError: Failed to lookup task ids: Looking up task id for CachedTaskType { native_fn: NativeFunction { name: "get_written_endpoint_with_issues_operation", global_name: "next_napi_bindings::next_api::endpoint::get_written_endpoint_with_issues_operation", .. }, this: None, arg: (OperationVc { node: RawVc::TaskOutput(558) },) } from database failed) {
+  location: 'turbopack\\crates\\turbo-tasks-backend\\src\\backend\\operation\\mod.rs:619:14'
+}
+14:
+Failed to lookup task ids: Looking up task id for CachedTaskType { native_fn: NativeFunction { name: "get_written_endpoint_with_issues_operation", global_name: "next_napi_bindings::next_api::endpoint::get_written_endpoint_with_issues_operation", .. }, this: None, arg: (OperationVc { node: RawVc::TaskOutput(558) },) } from database failed
+
+Caused by:
+    0: Unable to open static sorted file referenced from 00000096.meta
+    1: Unable to open static sorted file 00000092.sst
+    2: Failed to open SST file C:\Users\leona\OneDrive\Desktop\Projeto Dadinhos Giu\dadinhos-giu-app\.next\dev\cache/turbopack\c573e8c4\00000092.sst
+    3: O sistema não pode encontrar o caminho especificado. (os error 3)
+⨯ Error [TurbopackInternalError]: Failed to lookup task ids: Looking up task id for CachedTaskType { native_fn: NativeFunction { name: "get_written_endpoint_with_issues_operation", global_name: "next_napi_bindings::next_api::endpoint::get_written_endpoint_with_issues_operation", .. }, this: None, arg: (OperationVc { node: RawVc::TaskOutput(558) },) } from database failed
+
+Debug info:
+- Failed to lookup task ids: Looking up task id for CachedTaskType { native_fn: NativeFunction { name: "get_written_endpoint_with_issues_operation", global_name: "next_napi_bindings::next_api::endpoint::get_written_endpoint_with_issues_operation", .. }, this: None, arg: (OperationVc { node: RawVc::TaskOutput(558) },) } from database failed
+  
+  Caused by:
+      0: Unable to open static sorted file referenced from 00000096.meta
+      1: Unable to open static sorted file 00000092.sst
+      2: Failed to open SST file C:\Users\leona\OneDrive\Desktop\Projeto Dadinhos Giu\dadinhos-giu-app\.next\dev\cache/turbopack\c573e8c4\00000092.sst
+      3: O sistema não pode encontrar o caminho especificado. (os error 3)
+    at <unknown> (TurbopackInternalError: Failed to lookup task ids: Looking up task id for CachedTaskType { native_fn: NativeFunction { name: "get_written_endpoint_with_issues_operation", global_name: "next_napi_bindings::next_api::endpoint::get_written_endpoint_with_issues_operation", .. }, this: None, arg: (OperationVc { node: RawVc::TaskOutput(558) },) } from database failed) {
+  location: 'turbopack\\crates\\turbo-tasks-backend\\src\\backend\\operation\\mod.rs:619:14'
+}
+
+thread 'tokio-runtime-worker' (15032) panicked at turbopack\crates\turbo-tasks-backend\src\backend\operation\mod.rs:619:14:
+Failed to lookup task ids: Looking up task id for CachedTaskType { native_fn: NativeFunction { name: "get_written_endpoint_with_issues_operation", global_name: "next_napi_bindings::next_api::endpoint::get_written_endpoint_with_issues_operation", .. }, this: None, arg: (OperationVc { node: RawVc::TaskOutput(558) },) } from database failed
+
+Caused by:
+    0: Unable to open static sorted file referenced from 00000096.meta
+    1: Unable to open static sorted file 00000092.sst
+    2: Failed to open SST file C:\Users\leona\OneDrive\Desktop\Projeto Dadinhos Giu\dadinhos-giu-app\.next\dev\cache/turbopack\c573e8c4\00000092.sst
+    3: O sistema não pode encontrar o caminho especificado. (os error 3)
+Error [TurbopackInternalError]: Failed to lookup task ids: Looking up task id for CachedTaskType { native_fn: NativeFunction { name: "get_written_endpoint_with_issues_operation", global_name: "next_napi_bindings::next_api::endpoint::get_written_endpoint_with_issues_operation", .. }, this: None, arg: (OperationVc { node: RawVc::TaskOutput(558) },) } from database failed
+
+Debug info:
+- Failed to lookup task ids: Looking up task id for CachedTaskType { native_fn: NativeFunction { name: "get_written_endpoint_with_issues_operation", global_name: "next_napi_bindings::next_api::endpoint::get_written_endpoint_with_issues_operation", .. }, this: None, arg: (OperationVc { node: RawVc::TaskOutput(558) },) } from database failed
+  
+  Caused by:
+      0: Unable to open static sorted file referenced from 00000096.meta
+      1: Unable to open static sorted file 00000092.sst
+      2: Failed to open SST file C:\Users\leona\OneDrive\Desktop\Projeto Dadinhos Giu\dadinhos-giu-app\.next\dev\cache/turbopack\c573e8c4\00000092.sst
+      3: O sistema não pode encontrar o caminho especificado. (os error 3)
+    at <unknown> (TurbopackInternalError: Failed to lookup task ids: Looking up task id for CachedTaskType { native_fn: NativeFunction { name: "get_written_endpoint_with_issues_operation", global_name: "next_napi_bindings::next_api::endpoint::get_written_endpoint_with_issues_operation", .. }, this: None, arg: (OperationVc { node: RawVc::TaskOutput(558) },) } from database failed) {
+  location: 'turbopack\\crates\\turbo-tasks-backend\\src\\backend\\operation\\mod.rs:619:14'
+}
+Persisting failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
+Compaction failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
+Persisting failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
+Compaction failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
+Persisting failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
+Compaction failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
+Persisting failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
+Compaction failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
+Persisting failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
+Compaction failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
+Persisting failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
+Compaction failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
+Persisting failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
+Compaction failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
+Persisting failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
+Compaction failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
+Persisting failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
+Compaction failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
+Persisting failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
+Compaction failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
+Persisting failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
+Compaction failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
+Persisting failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
+Compaction failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
+Persisting failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
+Compaction failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
+Persisting failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
+Compaction failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
+Persisting failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
+Compaction failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
+Persisting failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
+Compaction failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
+Persisting failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
+Compaction failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
+Persisting failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)
+Compaction failed: Another write batch or compaction is already active (Only a single write operations is allowed at a time)

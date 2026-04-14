@@ -4,9 +4,20 @@ import { type FormEvent, useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { formatOrderAddress, formatOrderDesiredDate, formatZipCode } from "@/lib/order-formatters";
+import {
+  formatDeliveryMethodLabel,
+  formatOrderAddress,
+  formatOrderDesiredDate,
+  formatZipCode,
+  type DeliveryMethod,
+} from "@/lib/order-formatters";
 import { PageContainer } from "@/components/ui/page-container";
 import { PageTitle } from "@/components/ui/page-title";
+import { Select } from "@/components/ui/select";
+import {
+  buildPickupWhatsAppMessage,
+  buildWhatsAppLink,
+} from "@/lib/whatsapp-order-message";
 
 type Product = {
   id: string;
@@ -22,6 +33,7 @@ type ProductQuantityMap = Record<string, number>;
 type OrderResponse = {
   id: string;
   status: string;
+  deliveryMethod: DeliveryMethod;
   totalPrice: number;
   desiredDate?: string | null;
   zipCode?: string | null;
@@ -60,6 +72,7 @@ type SavedCustomerOrderData = {
 };
 
 const customerOrderStorageKey = "dadinhos-giu:customer-order-data";
+const giuWhatsAppPhone = process.env.NEXT_PUBLIC_GIU_WHATSAPP_PHONE ?? "";
 
 function formatPrice(price: number) {
   return new Intl.NumberFormat("pt-BR", {
@@ -73,6 +86,7 @@ export default function HomePage() {
   const [quantities, setQuantities] = useState<ProductQuantityMap>({});
   const [customerName, setCustomerName] = useState("");
   const [customerPhone, setCustomerPhone] = useState("");
+  const [deliveryMethod, setDeliveryMethod] = useState<DeliveryMethod>("DELIVERY");
   const [desiredDate, setDesiredDate] = useState("");
   const [zipCode, setZipCode] = useState("");
   const [street, setStreet] = useState("");
@@ -145,6 +159,11 @@ export default function HomePage() {
   }, []);
 
   useEffect(() => {
+    if (deliveryMethod === "PICKUP") {
+      setIsLoadingAddress(false);
+      return;
+    }
+
     const digits = zipCode.replace(/\D/g, "");
 
     if (digits.length !== 8) {
@@ -193,29 +212,11 @@ export default function HomePage() {
     }
 
     void loadAddress();
-  }, [zipCode]);
+  }, [deliveryMethod, zipCode]);
 
   useEffect(() => {
     void loadProducts();
   }, []);
-
-  useEffect(() => {
-    setQuantities((current) => {
-      let hasChanged = false;
-      const nextQuantities = { ...current };
-
-      for (const product of products) {
-        const currentQuantity = nextQuantities[product.id] ?? 0;
-
-        if (currentQuantity > product.stockQuantity) {
-          nextQuantities[product.id] = product.stockQuantity;
-          hasChanged = true;
-        }
-      }
-
-      return hasChanged ? nextQuantities : current;
-    });
-  }, [products]);
 
   const selectedItems = useMemo(
     () =>
@@ -237,16 +238,34 @@ export default function HomePage() {
     [selectedItems],
   );
 
+  const pickupWhatsAppMessage = useMemo(
+    () =>
+      buildPickupWhatsAppMessage({
+        customerName,
+        desiredDate,
+        items: selectedItems.map((item) => ({
+          quantity: item.quantity,
+          productName: item.product.name,
+        })),
+      }),
+    [customerName, desiredDate, selectedItems],
+  );
+
+  const pickupWhatsAppUrl = useMemo(
+    () => buildWhatsAppLink(giuWhatsAppPhone, pickupWhatsAppMessage),
+    [pickupWhatsAppMessage],
+  );
+
   function updateQuantity(productId: string, nextQuantity: number) {
     const product = products.find((item) => item.id === productId);
 
-    if (!product || product.stockQuantity <= 0) {
+    if (!product) {
       return;
     }
 
     setQuantities((current) => ({
       ...current,
-      [productId]: Math.max(0, Math.min(product.stockQuantity, nextQuantity)),
+      [productId]: Math.max(0, nextQuantity),
     }));
   }
 
@@ -282,24 +301,26 @@ export default function HomePage() {
       return;
     }
 
-    if (!formattedZipCode || formattedZipCode.replace(/\D/g, "").length !== 8) {
-      setErrorMessage("Informe um CEP valido.");
-      return;
-    }
-
-    if (!trimmedStreet || !trimmedNeighborhood || !trimmedCity || !trimmedState) {
-      setErrorMessage("Preencha um CEP valido para carregar o endereco.");
-      return;
-    }
-
-    if (!trimmedAddressNumber) {
-      setErrorMessage("Informe o numero do endereco.");
-      return;
-    }
-
     if (selectedItems.length === 0) {
       setErrorMessage("Selecione ao menos um produto.");
       return;
+    }
+
+    if (deliveryMethod === "DELIVERY") {
+      if (!formattedZipCode || formattedZipCode.replace(/\D/g, "").length !== 8) {
+        setErrorMessage("Informe um CEP valido.");
+        return;
+      }
+
+      if (!trimmedStreet || !trimmedNeighborhood || !trimmedCity || !trimmedState) {
+        setErrorMessage("Preencha um CEP valido para carregar o endereco.");
+        return;
+      }
+
+      if (!trimmedAddressNumber) {
+        setErrorMessage("Informe o numero do endereco.");
+        return;
+      }
     }
 
     setIsSubmitting(true);
@@ -315,14 +336,19 @@ export default function HomePage() {
             name: trimmedName,
             phone: trimmedPhone,
           },
+          deliveryMethod,
           desiredDate: trimmedDesiredDate,
-          zipCode: formattedZipCode,
-          street: trimmedStreet,
-          neighborhood: trimmedNeighborhood,
-          city: trimmedCity,
-          state: trimmedState,
-          addressNumber: trimmedAddressNumber,
-          ...(trimmedAddressComplement
+          ...(deliveryMethod === "DELIVERY"
+            ? {
+                zipCode: formattedZipCode,
+                street: trimmedStreet,
+                neighborhood: trimmedNeighborhood,
+                city: trimmedCity,
+                state: trimmedState,
+                addressNumber: trimmedAddressNumber,
+              }
+            : {}),
+          ...(deliveryMethod === "DELIVERY" && trimmedAddressComplement
             ? { addressComplement: trimmedAddressComplement }
             : {}),
           ...(trimmedNotes ? { notes: trimmedNotes } : {}),
@@ -382,6 +408,7 @@ export default function HomePage() {
       );
       setCustomerName("");
       setCustomerPhone("");
+      setDeliveryMethod("DELIVERY");
       setDesiredDate("");
       setZipCode("");
       setStreet("");
@@ -470,20 +497,20 @@ export default function HomePage() {
                       <span
                         className={`rounded-full border px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.12em] ${
                           isOutOfStock
-                            ? "border-red-300/30 bg-red-950/40 text-red-100"
-                            : "border-border-soft bg-background/25 text-text-muted"
+                            ? "border-amber-300/30 bg-amber-950/30 text-amber-100"
+                            : "border-emerald-300/30 bg-emerald-950/30 text-emerald-100"
                         }`.trim()}
                       >
                         {isOutOfStock
-                          ? "Indisponivel"
-                          : `${product.stockQuantity} disponivel(eis)`}
+                          ? "Sob encomenda"
+                          : "Pronta entrega"}
                       </span>
                     </div>
 
                     <div className="mt-5 flex items-center justify-between gap-3">
                       <Button
                         className="h-12 w-12 rounded-full px-0 py-0 text-lg"
-                        disabled={isOutOfStock || quantity === 0}
+                        disabled={quantity === 0}
                         type="button"
                         variant="secondary"
                         onClick={() => updateQuantity(product.id, quantity - 1)}
@@ -495,7 +522,6 @@ export default function HomePage() {
                       </span>
                       <Button
                         className="h-12 w-12 rounded-full px-0 py-0 text-lg"
-                        disabled={isOutOfStock || quantity >= product.stockQuantity}
                         type="button"
                         variant="primary"
                         onClick={() => updateQuantity(product.id, quantity + 1)}
@@ -504,11 +530,11 @@ export default function HomePage() {
                       </Button>
                     </div>
 
-                    {isOutOfStock ? (
-                      <p className="mt-4 text-sm text-text-muted">
-                        Indisponivel no momento.
-                      </p>
-                    ) : null}
+                    <p className="mt-4 text-sm text-text-muted">
+                      {isOutOfStock
+                        ? "Disponivel sob encomenda."
+                        : "Disponivel para pronta entrega."}
+                    </p>
                   </Card>
                 );
               })}
@@ -564,12 +590,27 @@ export default function HomePage() {
             <div className="space-y-4 rounded-[var(--radius-control)] border border-border-soft bg-background/20 p-4">
               <div>
                 <p className="text-sm font-semibold text-foreground">
-                  Entrega
+                  Recebimento
                 </p>
                 <p className="mt-1 text-sm text-text-muted">
-                  Informe a data desejada e confira o endereco.
+                  Escolha entre entrega ou retirada antes de finalizar.
                 </p>
               </div>
+
+              <label className="block space-y-2">
+                <span className="text-sm font-medium text-foreground">
+                  Como voce quer receber seu pedido?
+                </span>
+                <Select
+                  value={deliveryMethod}
+                  onChange={(event) =>
+                    setDeliveryMethod(event.target.value as DeliveryMethod)
+                  }
+                >
+                  <option value="DELIVERY">Entrega</option>
+                  <option value="PICKUP">Retirada</option>
+                </Select>
+              </label>
 
               <label className="block space-y-2">
                 <span className="text-sm font-medium text-foreground">
@@ -582,6 +623,8 @@ export default function HomePage() {
                 />
               </label>
 
+              {deliveryMethod === "DELIVERY" ? (
+                <>
               <label className="block space-y-2">
                 <span className="text-sm font-medium text-foreground">CEP</span>
                 <Input
@@ -631,6 +674,40 @@ export default function HomePage() {
                 onChange={(event) => setAddressComplement(event.target.value)}
               />
             </label>
+                </>
+              ) : (
+                <div className="rounded-[var(--radius-control)] border border-border-strong bg-background/25 p-4">
+                  <p className="text-sm font-semibold text-foreground">
+                    Pedido para retirada
+                  </p>
+                  <p className="mt-2 text-sm text-text-muted">
+                    Vamos preparar seu pedido para retirada. Depois de enviar,
+                    voce tambem pode combinar o horario pelo WhatsApp.
+                  </p>
+                  <Button
+                    className="mt-4"
+                    disabled={!pickupWhatsAppUrl || selectedItems.length === 0}
+                    type="button"
+                    variant="secondary"
+                    onClick={() => {
+                      if (pickupWhatsAppUrl) {
+                        window.open(
+                          pickupWhatsAppUrl,
+                          "_blank",
+                          "noopener,noreferrer",
+                        );
+                      }
+                    }}
+                  >
+                    Combinar retirada no WhatsApp
+                  </Button>
+                  {!pickupWhatsAppUrl ? (
+                    <p className="mt-3 text-sm text-text-muted">
+                      O numero do WhatsApp da Giu ainda nao esta configurado.
+                    </p>
+                  ) : null}
+                </div>
+              )}
             </div>
 
             <div className="space-y-4 rounded-[var(--radius-control)] border border-border-soft bg-background/20 p-4">
@@ -700,16 +777,22 @@ export default function HomePage() {
               </div>
             ) : null}
 
-            {desiredDate || street || addressNumber || addressComplement ? (
+            {desiredDate ||
+            deliveryMethod === "PICKUP" ||
+            street ||
+            addressNumber ||
+            addressComplement ? (
               <div className="rounded-[var(--radius-control)] border border-border-soft bg-background/25 p-4">
                 <p className="text-sm font-semibold text-foreground">
-                  Entrega e atendimento
+                  Recebimento e atendimento
                 </p>
                 <div className="mt-2 space-y-2 text-sm text-text-muted">
+                  <p>Como receber: {formatDeliveryMethodLabel(deliveryMethod)}</p>
                   {desiredDate ? (
                     <p>Para quando: {formatOrderDesiredDate(desiredDate)}</p>
                   ) : null}
-                  {formatOrderAddress({
+                  {deliveryMethod === "DELIVERY" &&
+                  formatOrderAddress({
                     street,
                     neighborhood,
                     city,
@@ -729,7 +812,12 @@ export default function HomePage() {
                       })}
                     </p>
                   ) : null}
-                  {zipCode ? <p>CEP: {formatZipCode(zipCode)}</p> : null}
+                  {deliveryMethod === "DELIVERY" && zipCode ? (
+                    <p>CEP: {formatZipCode(zipCode)}</p>
+                  ) : null}
+                  {deliveryMethod === "PICKUP" ? (
+                    <p>Retirada combinada diretamente com a Giu.</p>
+                  ) : null}
                 </div>
               </div>
             ) : null}

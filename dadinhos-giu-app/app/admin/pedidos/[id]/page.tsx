@@ -5,7 +5,13 @@ import { type FormEvent, useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { formatOrderAddress, formatOrderDesiredDate, formatZipCode } from "@/lib/order-formatters";
+import {
+  formatDeliveryMethodLabel,
+  formatOrderAddress,
+  formatOrderDesiredDate,
+  formatZipCode,
+  type DeliveryMethod,
+} from "@/lib/order-formatters";
 import { orderStatusConfig, type OrderStatus } from "@/lib/order-status";
 import { PageContainer } from "@/components/ui/page-container";
 import { PageTitle } from "@/components/ui/page-title";
@@ -15,13 +21,14 @@ import { buildWhatsAppLink, buildWhatsAppOrderMessage, normalizeWhatsAppPhone, t
 
 type OrderDetail = {
   id: string; status: OrderStatus; totalPrice: number; desiredDate?: string | null;
+  deliveryMethod: DeliveryMethod;
   zipCode?: string | null; street?: string | null; neighborhood?: string | null; city?: string | null;
   state?: string | null; addressNumber?: string | null; addressComplement?: string | null; notes?: string | null;
   createdAt: string; customer: { id: string; name: string; phone: string };
   items: Array<{ id: string; quantity: number; price: number; product: { id: string; name: string; price: number } }>;
   customerHistory: Array<{ id: string; status: OrderStatus; totalPrice: number; desiredDate?: string | null; createdAt: string; isCurrentOrder: boolean; items: Array<{ id: string; quantity: number; product: { id: string; name: string } }> }>;
 };
-type EditOrderForm = { desiredDate: string; status: OrderStatus; zipCode: string; street: string; neighborhood: string; city: string; state: string; addressNumber: string; addressComplement: string; notes: string };
+type EditOrderForm = { desiredDate: string; status: OrderStatus; deliveryMethod: DeliveryMethod; zipCode: string; street: string; neighborhood: string; city: string; state: string; addressNumber: string; addressComplement: string; notes: string };
 type ApiError = { error?: string };
 type ViaCepResponse = { logradouro?: string; bairro?: string; localidade?: string; uf?: string; erro?: boolean };
 
@@ -42,7 +49,7 @@ function summarizeHistoryItems(items: OrderDetail["customerHistory"][number]["it
 }
 function createEditForm(order: OrderDetail): EditOrderForm {
   return {
-    desiredDate: order.desiredDate ?? "", status: order.status, zipCode: formatZipCode(order.zipCode ?? ""),
+    desiredDate: order.desiredDate ?? "", status: order.status, deliveryMethod: order.deliveryMethod, zipCode: formatZipCode(order.zipCode ?? ""),
     street: order.street ?? "", neighborhood: order.neighborhood ?? "", city: order.city ?? "", state: order.state ?? "",
     addressNumber: order.addressNumber ?? "", addressComplement: order.addressComplement ?? "", notes: order.notes ?? "",
   };
@@ -61,7 +68,7 @@ export default function AdminPedidoDetailPage() {
   const [isSavingEdit, setIsSavingEdit] = useState(false);
   const [isLoadingAddress, setIsLoadingAddress] = useState(false);
   const [lastFetchedZipCode, setLastFetchedZipCode] = useState("");
-  const [editForm, setEditForm] = useState<EditOrderForm>({ desiredDate: "", status: "CREATED", zipCode: "", street: "", neighborhood: "", city: "", state: "", addressNumber: "", addressComplement: "", notes: "" });
+  const [editForm, setEditForm] = useState<EditOrderForm>({ desiredDate: "", status: "CREATED", deliveryMethod: "DELIVERY", zipCode: "", street: "", neighborhood: "", city: "", state: "", addressNumber: "", addressComplement: "", notes: "" });
 
   useEffect(() => {
     async function loadOrder() {
@@ -153,16 +160,16 @@ export default function AdminPedidoDetailPage() {
     const trimmedCity = editForm.city.trim();
     const trimmedState = editForm.state.trim().toUpperCase();
     const trimmedAddressNumber = editForm.addressNumber.trim();
-    if (formattedZipCode && formattedZipCode.replace(/\D/g, "").length !== 8) { setErrorMessage("Informe um CEP valido."); return; }
-    if (formattedZipCode && (!trimmedStreet || !trimmedNeighborhood || !trimmedCity || !trimmedState)) { setErrorMessage("Preencha um CEP valido para carregar o endereco."); return; }
-    if (formattedZipCode && !trimmedAddressNumber) { setErrorMessage("Informe o numero do endereco."); return; }
+    if (editForm.deliveryMethod === "DELIVERY" && formattedZipCode && formattedZipCode.replace(/\D/g, "").length !== 8) { setErrorMessage("Informe um CEP valido."); return; }
+    if (editForm.deliveryMethod === "DELIVERY" && formattedZipCode && (!trimmedStreet || !trimmedNeighborhood || !trimmedCity || !trimmedState)) { setErrorMessage("Preencha um CEP valido para carregar o endereco."); return; }
+    if (editForm.deliveryMethod === "DELIVERY" && formattedZipCode && !trimmedAddressNumber) { setErrorMessage("Informe o numero do endereco."); return; }
     setIsSavingEdit(true);
     try {
       const response = await fetch(`/api/pedidos/${order.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          status: editForm.status, desiredDate: editForm.desiredDate.trim(), zipCode: formattedZipCode, street: trimmedStreet,
+          status: editForm.status, deliveryMethod: editForm.deliveryMethod, desiredDate: editForm.desiredDate.trim(), zipCode: formattedZipCode, street: trimmedStreet,
           neighborhood: trimmedNeighborhood, city: trimmedCity, state: trimmedState, addressNumber: trimmedAddressNumber,
           addressComplement: editForm.addressComplement.trim(), notes: editForm.notes.trim(),
         }),
@@ -205,7 +212,7 @@ export default function AdminPedidoDetailPage() {
                   <StatusBadge status={order.status} />
                 </div>
                 <div className="grid gap-3 text-sm text-text-muted sm:grid-cols-2">
-                  <p>ID do pedido: {order.id}</p><p>Data de criacao: {formatDate(order.createdAt)}</p><p>Cliente: {order.customer.name}</p><p>Telefone: {order.customer.phone}</p><p>Status do cliente: {orderStatusConfig[order.status].label}</p><p>Para quando: {formatOrderDesiredDate(order.desiredDate) ?? "Nao informado"}</p>
+                  <p>ID do pedido: {order.id}</p><p>Data de criacao: {formatDate(order.createdAt)}</p><p>Cliente: {order.customer.name}</p><p>Telefone: {order.customer.phone}</p><p>Status do cliente: {orderStatusConfig[order.status].label}</p><p>Recebimento: {formatDeliveryMethodLabel(order.deliveryMethod)}</p><p>Para quando: {formatOrderDesiredDate(order.desiredDate) ?? "Nao informado"}</p>
                 </div>
                 {order.notes ? <div className="rounded-[var(--radius-control)] border border-border-soft bg-background/25 px-4 py-3"><p className="text-sm font-medium text-foreground">Observacao do pedido</p><p className="mt-2 text-sm leading-6 text-text-muted">{order.notes}</p></div> : null}
                 {!isEditing ? <div className="space-y-2"><label className="block text-sm font-medium text-foreground">Atualizar status</label><Select disabled={isUpdatingStatus} value={order.status} onChange={(event) => void handleStatusChange(event.target.value as OrderStatus)}>{orderStatuses.map((status) => <option key={status} value={status}>{orderStatusConfig[status].label}</option>)}</Select></div> : null}
@@ -229,8 +236,9 @@ export default function AdminPedidoDetailPage() {
                   <div className="grid gap-4 md:grid-cols-2">
                     <label className="block space-y-2"><span className="text-sm font-medium text-foreground">Data desejada</span><Input type="date" value={editForm.desiredDate} onChange={(event) => updateEditField("desiredDate", event.target.value)} /></label>
                     <label className="block space-y-2"><span className="text-sm font-medium text-foreground">Status</span><Select value={editForm.status} onChange={(event) => updateEditField("status", event.target.value as OrderStatus)}>{orderStatuses.map((status) => <option key={status} value={status}>{orderStatusConfig[status].label}</option>)}</Select></label>
+                    <label className="block space-y-2"><span className="text-sm font-medium text-foreground">Recebimento</span><Select value={editForm.deliveryMethod} onChange={(event) => updateEditField("deliveryMethod", event.target.value as DeliveryMethod)}><option value="DELIVERY">Entrega</option><option value="PICKUP">Retirada</option></Select></label>
                   </div>
-                  <div className="rounded-[var(--radius-control)] border border-border-soft bg-background/20 p-4">
+                  {editForm.deliveryMethod === "DELIVERY" ? <div className="rounded-[var(--radius-control)] border border-border-soft bg-background/20 p-4">
                     <h3 className="text-sm font-semibold text-foreground">Endereco</h3>
                     <div className="mt-4 grid gap-4 md:grid-cols-2">
                       <label className="block space-y-2"><span className="text-sm font-medium text-foreground">CEP</span><Input inputMode="numeric" placeholder="09750-000" value={editForm.zipCode} onChange={(event) => { const nextZipCode = formatZipCode(event.target.value); updateEditField("zipCode", nextZipCode); if (nextZipCode.replace(/\D/g, "").length < 8) setLastFetchedZipCode(""); }} /></label>
@@ -242,15 +250,16 @@ export default function AdminPedidoDetailPage() {
                       <label className="block space-y-2"><span className="text-sm font-medium text-foreground">Estado</span><Input maxLength={2} placeholder="SP" value={editForm.state} onChange={(event) => updateEditField("state", event.target.value.toUpperCase())} /></label>
                     </div>
                     {isLoadingAddress ? <p className="mt-3 text-sm text-text-muted">Buscando endereco pelo CEP...</p> : null}
-                  </div>
+                  </div> : <div className="rounded-[var(--radius-control)] border border-border-soft bg-background/20 p-4"><h3 className="text-sm font-semibold text-foreground">Retirada</h3><p className="mt-2 text-sm text-text-muted">Este pedido sera retirado, por isso o endereco nao e necessario.</p></div>}
                   <label className="block space-y-2"><span className="text-sm font-medium text-foreground">Observacoes</span><textarea className="ui-focus min-h-28 w-full rounded-[var(--radius-control)] border border-transparent bg-[#f5e6d3] px-4 py-3 text-sm text-text-contrast placeholder:text-[#7f6454] shadow-soft" placeholder="Ex.: entregar apos as 15h" value={editForm.notes} onChange={(event) => updateEditField("notes", event.target.value)} /></label>
                   <div className="rounded-[var(--radius-control)] border border-border-soft bg-background/20 p-4">
                     <p className="text-sm font-semibold text-foreground">Preview da atualizacao</p>
                     <div className="mt-3 grid gap-2 text-sm text-text-muted">
                       <p>Status: {orderStatusConfig[editForm.status].label}</p>
+                      <p>Recebimento: {formatDeliveryMethodLabel(editForm.deliveryMethod)}</p>
                       <p>Para quando: {formatOrderDesiredDate(editForm.desiredDate) ?? "Nao informado"}</p>
-                      <p>Endereco: {formatOrderAddress({ zipCode: editForm.zipCode, street: editForm.street, neighborhood: editForm.neighborhood, city: editForm.city, state: editForm.state, addressNumber: editForm.addressNumber, addressComplement: editForm.addressComplement }) ?? "Nao informado"}</p>
-                      <p>CEP: {formatZipCode(editForm.zipCode) || "Nao informado"}</p>
+                      <p>Endereco: {editForm.deliveryMethod === "PICKUP" ? "Retirada" : formatOrderAddress({ zipCode: editForm.zipCode, street: editForm.street, neighborhood: editForm.neighborhood, city: editForm.city, state: editForm.state, addressNumber: editForm.addressNumber, addressComplement: editForm.addressComplement }) ?? "Nao informado"}</p>
+                      <p>CEP: {editForm.deliveryMethod === "PICKUP" ? "Nao se aplica" : formatZipCode(editForm.zipCode) || "Nao informado"}</p>
                     </div>
                   </div>
                   <div className="flex flex-wrap gap-3">
@@ -266,13 +275,20 @@ export default function AdminPedidoDetailPage() {
                   <Button type="button" variant="secondary" onClick={handleStartEdit}>Editar pedido</Button>
                 </div>
                 <div className="grid gap-3 text-sm text-text-muted md:grid-cols-2">
-                  <p>CEP: {formatZipCode(order.zipCode) || "Nao informado"}</p>
-                  <p>Endereco completo: {formatOrderAddress(order) ?? "Nao informado"}</p>
-                  <p>Rua: {order.street ?? "Nao informado"}</p>
-                  <p>Numero: {order.addressNumber ?? "Nao informado"}</p>
-                  <p>Bairro: {order.neighborhood ?? "Nao informado"}</p>
-                  <p>Cidade/UF: {order.city || order.state ? `${order.city ?? ""}${order.state ? `/${order.state}` : ""}` : "Nao informado"}</p>
-                  <p>Complemento: {order.addressComplement ?? "Nao informado"}</p>
+                  <p>Recebimento: {formatDeliveryMethodLabel(order.deliveryMethod)}</p>
+                  {order.deliveryMethod === "PICKUP" ? (
+                    <p>Endereco: Nao se aplica. Pedido para retirada.</p>
+                  ) : (
+                    <>
+                      <p>CEP: {formatZipCode(order.zipCode) || "Nao informado"}</p>
+                      <p>Endereco completo: {formatOrderAddress(order) ?? "Nao informado"}</p>
+                      <p>Rua: {order.street ?? "Nao informado"}</p>
+                      <p>Numero: {order.addressNumber ?? "Nao informado"}</p>
+                      <p>Bairro: {order.neighborhood ?? "Nao informado"}</p>
+                      <p>Cidade/UF: {order.city || order.state ? `${order.city ?? ""}${order.state ? `/${order.state}` : ""}` : "Nao informado"}</p>
+                      <p>Complemento: {order.addressComplement ?? "Nao informado"}</p>
+                    </>
+                  )}
                 </div>
               </Card>
             )}

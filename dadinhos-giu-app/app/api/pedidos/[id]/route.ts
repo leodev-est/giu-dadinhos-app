@@ -15,6 +15,7 @@ type DecimalLike = {
 type PedidoComRelacoes = {
   id: string;
   status: string;
+  deliveryMethod: "DELIVERY" | "PICKUP";
   totalPrice: DecimalLike;
   desiredDate?: string | null;
   zipCode?: string | null;
@@ -61,6 +62,7 @@ type PedidoHistoricoCliente = {
 
 const editableOrderFields = [
   "status",
+  "deliveryMethod",
   "desiredDate",
   "zipCode",
   "street",
@@ -76,6 +78,7 @@ const patchOrderSchema = z.object({
   status: z
     .enum(["CREATED", "READY", "OUT_FOR_DELIVERY", "DELIVERED", "CANCELLED"])
     .optional(),
+  deliveryMethod: z.enum(["DELIVERY", "PICKUP"]).optional(),
   desiredDate: z
     .string()
     .trim()
@@ -119,6 +122,7 @@ function formatPedido(pedido: PedidoComRelacoes) {
   return {
     id: pedido.id,
     status: mapDbStatusToApi(pedido.status),
+    deliveryMethod: pedido.deliveryMethod,
     totalPrice: pedido.totalPrice.toNumber(),
     desiredDate: pedido.desiredDate ?? null,
     zipCode: pedido.zipCode ?? null,
@@ -278,6 +282,10 @@ export async function PATCH(
       );
     }
 
+    if (Object.prototype.hasOwnProperty.call(body, "deliveryMethod")) {
+      updateData.deliveryMethod = parsedBody.data.deliveryMethod ?? "DELIVERY";
+    }
+
     if (Object.prototype.hasOwnProperty.call(body, "desiredDate")) {
       updateData.desiredDate = getNullableString(parsedBody.data.desiredDate);
     }
@@ -314,6 +322,20 @@ export async function PATCH(
 
     if (Object.prototype.hasOwnProperty.call(body, "notes")) {
       updateData.notes = getNullableString(parsedBody.data.notes);
+    }
+
+    const nextDeliveryMethod =
+      (updateData.deliveryMethod as "DELIVERY" | "PICKUP" | undefined) ??
+      pedidoExistente.deliveryMethod;
+
+    if (nextDeliveryMethod === "PICKUP") {
+      updateData.zipCode = null;
+      updateData.street = null;
+      updateData.neighborhood = null;
+      updateData.city = null;
+      updateData.state = null;
+      updateData.addressNumber = null;
+      updateData.addressComplement = null;
     }
 
     const pedidoAtualizado = (await prisma.order.update({

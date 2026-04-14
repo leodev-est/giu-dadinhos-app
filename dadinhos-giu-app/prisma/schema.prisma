@@ -14,6 +14,11 @@ enum OrderStatus {
   CANCELED
 }
 
+enum DeliveryMethod {
+  DELIVERY
+  PICKUP
+}
+
 model Customer {
   id        String   @id @default(uuid())
   name      String
@@ -38,6 +43,7 @@ model Order {
   id         String      @id @default(uuid())
   customerId String
   status     OrderStatus @default(PENDING)
+  deliveryMethod DeliveryMethod @default(DELIVERY)
   totalPrice Decimal     @db.Decimal(10, 2)
   desiredDate String?
   zipCode String?

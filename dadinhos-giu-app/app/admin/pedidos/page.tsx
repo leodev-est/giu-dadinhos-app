@@ -4,7 +4,12 @@ import Link from "next/link";
 import { useDeferredValue, useEffect, useMemo, useState, useTransition } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { formatOrderAddress, formatOrderDesiredDate } from "@/lib/order-formatters";
+import {
+  formatDeliveryMethodLabel,
+  formatOrderAddress,
+  formatOrderDesiredDate,
+  type DeliveryMethod,
+} from "@/lib/order-formatters";
 import { Input } from "@/components/ui/input";
 import { orderStatusConfig, type OrderStatus } from "@/lib/order-status";
 import { PageContainer } from "@/components/ui/page-container";
@@ -15,6 +20,7 @@ import { StatusBadge } from "@/components/ui/status-badge";
 type Order = {
   id: string;
   status: OrderStatus;
+  deliveryMethod: DeliveryMethod;
   totalPrice: number;
   desiredDate?: string | null;
   zipCode?: string | null;
@@ -368,6 +374,7 @@ export default function AdminPedidosPage() {
                         <p>Telefone: {order.customer.phone}</p>
                         <p>Total: {formatPrice(order.totalPrice)}</p>
                         <p>Status: {orderStatusConfig[order.status].label}</p>
+                        <p>Recebimento: {formatDeliveryMethodLabel(order.deliveryMethod)}</p>
                         <p>Pedido: {order.id}</p>
                         <p>Criado em: {formatDate(order.createdAt)}</p>
                         <p>
@@ -377,7 +384,9 @@ export default function AdminPedidosPage() {
                         </p>
                         <p>
                           Endereco:{" "}
-                          {formatOrderAddress(order) ?? "Nao informado"}
+                          {order.deliveryMethod === "PICKUP"
+                            ? "Retirada"
+                            : formatOrderAddress(order) ?? "Nao informado"}
                         </p>
                       </div>
 
