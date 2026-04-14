@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 
 const navigationLinks = [
-  { href: "/", label: "Novo Pedido" },
+  { href: "/pedido", label: "Novo Pedido" },
   { href: "/dashboard", label: "Dashboard" },
   { href: "/agenda", label: "Agenda" },
   { href: "/kanban", label: "Kanban" },
@@ -14,7 +14,7 @@ const navigationLinks = [
 
 export function AppHeader() {
   const pathname = usePathname();
-  const isPublicOrderPage = pathname === "/";
+  const isPublicPage = pathname === "/" || pathname === "/pedido";
 
   return (
     <header className="border-b border-border-soft bg-[#2f2018]/85 backdrop-blur">
@@ -31,7 +31,7 @@ export function AppHeader() {
           </p>
         </div>
 
-        {!isPublicOrderPage ? (
+        {!isPublicPage ? (
           <nav className="flex flex-wrap gap-2">
             {navigationLinks.map((link) => (
               <Link
