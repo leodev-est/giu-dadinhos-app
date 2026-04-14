@@ -66,6 +66,7 @@ const kanbanColumns: Array<{
   { status: "DELIVERED", title: "Entregue" },
   { status: "CANCELLED", title: "Cancelado" },
 ];
+const POLLING_INTERVAL_MS = 5000;
 
 function formatPrice(price: number) {
   return new Intl.NumberFormat("pt-BR", {
@@ -114,6 +115,8 @@ export default function KanbanPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState("");
   const [successMessage, setSuccessMessage] = useState("");
+  const [lastSyncedAt, setLastSyncedAt] = useState<Date | null>(null);
+  const [recentlyUpdatedOrderIds, setRecentlyUpdatedOrderIds] = useState<string[]>([]);
   const [pendingOrderId, setPendingOrderId] = useState<string | null>(null);
   const [dragState, setDragState] = useState<DragState | null>(null);
   const [hoveredColumnStatus, setHoveredColumnStatus] =
@@ -126,15 +129,41 @@ export default function KanbanPage() {
     DELIVERED: null,
     CANCELLED: null,
   });
+  const pollingInFlightRef = useRef(false);
+  const highlightTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     ordersRef.current = orders;
   }, [orders]);
 
+  function getChangedOrderIds(previousOrders: KanbanOrder[], nextOrders: KanbanOrder[]) {
+    const previousById = new Map(
+      previousOrders.map((order) => [order.id, order] as const),
+    );
+
+    return nextOrders
+      .filter((order) => {
+        const previousOrder = previousById.get(order.id);
+
+        if (!previousOrder) {
+          return true;
+        }
+
+        return (
+          previousOrder.status !== order.status ||
+          previousOrder.totalPrice !== order.totalPrice ||
+          previousOrder.desiredDate !== order.desiredDate
+        );
+      })
+      .map((order) => order.id);
+  }
+
   useEffect(() => {
-    async function loadOrders() {
+    async function loadOrders(options?: { silent?: boolean }) {
       try {
-        setErrorMessage("");
+        if (!options?.silent) {
+          setErrorMessage("");
+        }
 
         const response = await fetch("/api/pedidos", {
           cache: "no-store",
@@ -145,20 +174,60 @@ export default function KanbanPage() {
         }
 
         const data = (await response.json()) as KanbanOrder[];
+        const changedOrderIds = getChangedOrderIds(ordersRef.current, data);
         setOrders(data);
+        setLastSyncedAt(new Date());
+
+        if (changedOrderIds.length > 0) {
+          setRecentlyUpdatedOrderIds(changedOrderIds);
+
+          if (highlightTimeoutRef.current) {
+            clearTimeout(highlightTimeoutRef.current);
+          }
+
+          highlightTimeoutRef.current = setTimeout(() => {
+            setRecentlyUpdatedOrderIds([]);
+          }, 3500);
+        }
       } catch (error) {
-        setErrorMessage(
-          error instanceof Error
-            ? error.message
-            : "Nao foi possivel carregar os pedidos.",
-        );
+        if (!options?.silent) {
+          setErrorMessage(
+            error instanceof Error
+              ? error.message
+              : "Nao foi possivel carregar os pedidos.",
+          );
+        }
       } finally {
         setIsLoading(false);
       }
     }
 
     void loadOrders();
-  }, []);
+    const interval = window.setInterval(() => {
+      if (
+        document.hidden ||
+        dragState ||
+        pendingOrderId ||
+        pollingInFlightRef.current
+      ) {
+        return;
+      }
+
+      pollingInFlightRef.current = true;
+
+      void loadOrders({ silent: true }).finally(() => {
+        pollingInFlightRef.current = false;
+      });
+    }, POLLING_INTERVAL_MS);
+
+    return () => {
+      window.clearInterval(interval);
+
+      if (highlightTimeoutRef.current) {
+        clearTimeout(highlightTimeoutRef.current);
+      }
+    };
+  }, [dragState, pendingOrderId]);
 
   const draggedOrder = useMemo(
     () => orders.find((order) => order.id === dragState?.orderId) ?? null,
@@ -241,6 +310,8 @@ export default function KanbanPage() {
             : order,
         ),
       );
+      setLastSyncedAt(new Date());
+      setRecentlyUpdatedOrderIds([orderId]);
       setSuccessMessage("Status do pedido atualizado com sucesso.");
     } catch (error) {
       setOrders((current) =>
@@ -363,6 +434,12 @@ export default function KanbanPage() {
               {orders.length} pedido(s)
             </span>
           </div>
+          <p className="text-xs text-text-muted">
+            Atualizacao automatica a cada 5 segundos
+            {lastSyncedAt
+              ? ` • Ultima sincronizacao ${lastSyncedAt.toLocaleTimeString("pt-BR")}`
+              : ""}
+          </p>
 
           {errorMessage ? (
             <div className="rounded-[var(--radius-control)] border border-red-300/30 bg-red-950/40 px-3 py-2 text-xs text-red-100">
@@ -419,6 +496,9 @@ export default function KanbanPage() {
                       column.orders.map((order) => {
                         const isUpdatingThisOrder = pendingOrderId === order.id;
                         const isDraggingThisOrder = dragState?.orderId === order.id;
+                        const isRecentlyUpdated = recentlyUpdatedOrderIds.includes(
+                          order.id,
+                        );
 
                         return (
                           <div
@@ -428,7 +508,11 @@ export default function KanbanPage() {
                             }`.trim()}
                           >
                             <Card
-                              className="border-border-strong bg-surface-muted p-2 transition hover:border-accent/60"
+                              className={`border-border-strong bg-surface-muted p-2 transition hover:border-accent/60 ${
+                                isRecentlyUpdated
+                                  ? "ring-1 ring-emerald-300/50 ring-offset-2 ring-offset-background"
+                                  : ""
+                              }`.trim()}
                               onPointerDown={(event) =>
                                 handleCardPointerDown(event, order)
                               }

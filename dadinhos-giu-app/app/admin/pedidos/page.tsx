@@ -1,7 +1,15 @@
 "use client";
 
 import Link from "next/link";
-import { useDeferredValue, useEffect, useMemo, useState, useTransition } from "react";
+import {
+  useCallback,
+  useDeferredValue,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  useTransition,
+} from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import {
@@ -61,6 +69,7 @@ const orderStatuses: OrderStatus[] = [
   "DELIVERED",
   "CANCELLED",
 ];
+const POLLING_INTERVAL_MS = 5000;
 
 function formatPrice(price: number) {
   return new Intl.NumberFormat("pt-BR", {
@@ -86,6 +95,8 @@ export default function AdminPedidosPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState("");
   const [successMessage, setSuccessMessage] = useState("");
+  const [lastSyncedAt, setLastSyncedAt] = useState<Date | null>(null);
+  const [recentlyUpdatedOrderIds, setRecentlyUpdatedOrderIds] = useState<string[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState<"ALL" | OrderStatus>("ALL");
   const [createdDateFrom, setCreatedDateFrom] = useState("");
@@ -95,21 +106,75 @@ export default function AdminPedidosPage() {
   const [pendingOrderId, setPendingOrderId] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
   const deferredSearchTerm = useDeferredValue(searchTerm);
+  const pollingInFlightRef = useRef(false);
+  const highlightTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const ordersRef = useRef<Order[]>([]);
 
-  async function loadOrders() {
-    setErrorMessage("");
+  useEffect(() => {
+    ordersRef.current = orders;
+  }, [orders]);
 
-    const response = await fetch("/api/pedidos", {
-      cache: "no-store",
-    });
+  const getChangedOrderIds = useCallback(
+    (previousOrders: Order[], nextOrders: Order[]) => {
+    const previousById = new Map(
+      previousOrders.map((order) => [order.id, order] as const),
+    );
 
-    if (!response.ok) {
-      throw new Error("Nao foi possivel carregar os pedidos.");
-    }
+    return nextOrders
+      .filter((order) => {
+        const previousOrder = previousById.get(order.id);
 
-    const data = (await response.json()) as Order[];
-    setOrders(data);
-  }
+        if (!previousOrder) {
+          return true;
+        }
+
+        return (
+          previousOrder.status !== order.status ||
+          previousOrder.totalPrice !== order.totalPrice ||
+          previousOrder.desiredDate !== order.desiredDate ||
+          previousOrder.deliveryMethod !== order.deliveryMethod ||
+          previousOrder.notes !== order.notes
+        );
+      })
+      .map((order) => order.id);
+    },
+    [],
+  );
+
+  const loadOrders = useCallback(
+    async (options?: { silent?: boolean }): Promise<void> => {
+      if (!options?.silent) {
+        setErrorMessage("");
+      }
+
+      const response = await fetch("/api/pedidos", {
+        cache: "no-store",
+      });
+
+      if (!response.ok) {
+        throw new Error("Nao foi possivel carregar os pedidos.");
+      }
+
+      const data = (await response.json()) as Order[];
+      const changedOrderIds = getChangedOrderIds(ordersRef.current, data);
+
+      setOrders(data);
+      setLastSyncedAt(new Date());
+
+      if (changedOrderIds.length > 0) {
+        setRecentlyUpdatedOrderIds(changedOrderIds);
+
+        if (highlightTimeoutRef.current) {
+          clearTimeout(highlightTimeoutRef.current);
+        }
+
+        highlightTimeoutRef.current = setTimeout(() => {
+          setRecentlyUpdatedOrderIds([]);
+        }, 3500);
+      }
+    },
+    [getChangedOrderIds],
+  );
 
   useEffect(() => {
     async function hydrateOrders() {
@@ -127,7 +192,34 @@ export default function AdminPedidosPage() {
     }
 
     void hydrateOrders();
-  }, []);
+  }, [loadOrders]);
+
+  useEffect(() => {
+    const interval = window.setInterval(() => {
+      if (document.hidden || pendingOrderId || pollingInFlightRef.current) {
+        return;
+      }
+
+      pollingInFlightRef.current = true;
+
+      void loadOrders({ silent: true })
+        .catch(() => {
+          // Mantemos o ultimo estado renderizado para evitar flicker ou quebra
+          // operacional durante falhas temporarias de rede.
+        })
+        .finally(() => {
+          pollingInFlightRef.current = false;
+        });
+    }, POLLING_INTERVAL_MS);
+
+    return () => {
+      window.clearInterval(interval);
+
+      if (highlightTimeoutRef.current) {
+        clearTimeout(highlightTimeoutRef.current);
+      }
+    };
+  }, [loadOrders, pendingOrderId]);
 
   async function handleStatusChange(orderId: string, status: OrderStatus) {
     setErrorMessage("");
@@ -154,13 +246,15 @@ export default function AdminPedidosPage() {
       return;
     }
 
-    setOrders((current) =>
-      current.map((order) =>
-        order.id === orderId && "status" in data
-          ? { ...order, status: data.status }
-          : order,
-      ),
-    );
+      setOrders((current) =>
+        current.map((order) =>
+          order.id === orderId && "status" in data
+            ? { ...order, status: data.status }
+            : order,
+        ),
+      );
+    setLastSyncedAt(new Date());
+    setRecentlyUpdatedOrderIds([orderId]);
     setSuccessMessage("Status do pedido atualizado com sucesso.");
     setPendingOrderId(null);
   }
@@ -231,6 +325,12 @@ export default function AdminPedidosPage() {
               {filteredOrders.length} de {orders.length} pedido(s)
             </span>
           </div>
+          <p className="mt-3 text-sm text-text-muted">
+            Atualizacao automatica a cada 5 segundos
+            {lastSyncedAt
+              ? ` • Ultima sincronizacao ${lastSyncedAt.toLocaleTimeString("pt-BR")}`
+              : ""}
+          </p>
 
           {errorMessage ? (
             <div className="mt-4 rounded-[var(--radius-control)] border border-red-300/30 bg-red-950/40 px-4 py-3 text-sm text-red-100">
@@ -355,11 +455,16 @@ export default function AdminPedidosPage() {
           <div className="grid gap-4">
             {filteredOrders.map((order) => {
               const statusDisabled = isPending && pendingOrderId === order.id;
+              const isRecentlyUpdated = recentlyUpdatedOrderIds.includes(order.id);
 
               return (
                 <Card
                   key={order.id}
-                  className="border-border-strong bg-surface-muted"
+                  className={`border-border-strong bg-surface-muted transition ${
+                    isRecentlyUpdated
+                      ? "ring-1 ring-emerald-300/50 ring-offset-2 ring-offset-background"
+                      : ""
+                  }`.trim()}
                 >
                   <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
                     <div className="space-y-3">

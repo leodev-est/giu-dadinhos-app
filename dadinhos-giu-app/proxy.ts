@@ -1,7 +1,7 @@
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 
-const protectedPagePrefixes = ["/admin", "/dashboard", "/kanban"];
+const protectedPagePrefixes = ["/admin", "/dashboard", "/kanban", "/agenda"];
 const protectedApiPrefixes = ["/api/pedidos", "/api/produtos"];
 
 function isProtectedPage(pathname: string) {
