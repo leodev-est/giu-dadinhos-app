@@ -1,12 +1,20 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  useTransition,
+} from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { PageContainer } from "@/components/ui/page-container";
 import { PageTitle } from "@/components/ui/page-title";
+import { Select } from "@/components/ui/select";
 import { StatusBadge } from "@/components/ui/status-badge";
 import {
   formatDeliveryMethodLabel,
@@ -14,9 +22,9 @@ import {
   formatOrderDesiredDate,
   type DeliveryMethod,
 } from "@/lib/order-formatters";
-import { type OrderStatus } from "@/lib/order-status";
+import { orderStatusConfig, type OrderStatus } from "@/lib/order-status";
 import {
-  buildPickupWhatsAppMessage,
+  buildPickupCoordinationWhatsAppMessage,
   buildWhatsAppLink,
 } from "@/lib/whatsapp-order-message";
 
@@ -53,7 +61,13 @@ type AgendaOrder = {
 };
 
 const POLLING_INTERVAL_MS = 5000;
-const giuWhatsAppPhone = process.env.NEXT_PUBLIC_GIU_WHATSAPP_PHONE ?? "";
+const orderStatuses: OrderStatus[] = [
+  "CREATED",
+  "READY",
+  "OUT_FOR_DELIVERY",
+  "DELIVERED",
+  "CANCELLED",
+];
 
 function getTodayDateInSaoPaulo() {
   return new Intl.DateTimeFormat("en-CA", {
@@ -120,15 +134,34 @@ function compareOrders(first: AgendaOrder, second: AgendaOrder) {
   );
 }
 
+function getOperationalReadinessLabel(status: OrderStatus) {
+  if (status === "READY" || status === "OUT_FOR_DELIVERY") {
+    return "Pronto para sair";
+  }
+
+  if (status === "DELIVERED") {
+    return "Finalizado";
+  }
+
+  if (status === "CANCELLED") {
+    return "Cancelado";
+  }
+
+  return "Ainda em preparo";
+}
+
 export default function AgendaPage() {
   const [orders, setOrders] = useState<AgendaOrder[]>([]);
   const [selectedDate, setSelectedDate] = useState(getTodayDateInSaoPaulo());
   const [isLoading, setIsLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState("");
+  const [successMessage, setSuccessMessage] = useState("");
   const [lastSyncedAt, setLastSyncedAt] = useState<Date | null>(null);
   const [recentlyUpdatedOrderIds, setRecentlyUpdatedOrderIds] = useState<
     string[]
   >([]);
+  const [pendingOrderId, setPendingOrderId] = useState<string | null>(null);
+  const [isPending, startTransition] = useTransition();
   const ordersRef = useRef<AgendaOrder[]>([]);
   const pollingInFlightRef = useRef(false);
   const highlightTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(
@@ -221,7 +254,7 @@ export default function AgendaPage() {
 
   useEffect(() => {
     const interval = window.setInterval(() => {
-      if (document.hidden || pollingInFlightRef.current) {
+      if (document.hidden || pendingOrderId || pollingInFlightRef.current) {
         return;
       }
 
@@ -243,7 +276,52 @@ export default function AgendaPage() {
         clearTimeout(highlightTimeoutRef.current);
       }
     };
-  }, [loadOrders]);
+  }, [loadOrders, pendingOrderId]);
+
+  async function handleStatusChange(orderId: string, status: OrderStatus) {
+    setErrorMessage("");
+    setSuccessMessage("");
+    setPendingOrderId(orderId);
+
+    try {
+      const response = await fetch(`/api/pedidos/${orderId}`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ status }),
+      });
+
+      const data = (await response.json()) as AgendaOrder | { error?: string };
+
+      if (!response.ok) {
+        setErrorMessage(
+          "error" in data
+            ? data.error ?? "Nao foi possivel atualizar o status."
+            : "Nao foi possivel atualizar o status.",
+        );
+        return;
+      }
+
+      if (!("status" in data)) {
+        setErrorMessage("Nao foi possivel atualizar o status.");
+        return;
+      }
+
+      setOrders((current) =>
+        current.map((order) =>
+          order.id === orderId ? { ...order, status: data.status } : order,
+        ),
+      );
+      setLastSyncedAt(new Date());
+      setRecentlyUpdatedOrderIds([orderId]);
+      setSuccessMessage("Status atualizado na agenda.");
+    } catch {
+      setErrorMessage("Nao foi possivel atualizar o status.");
+    } finally {
+      setPendingOrderId(null);
+    }
+  }
 
   const ordersForSelectedDate = useMemo(
     () =>
@@ -315,6 +393,12 @@ export default function AgendaPage() {
               {errorMessage}
             </div>
           ) : null}
+
+          {successMessage ? (
+            <div className="rounded-[var(--radius-control)] border border-emerald-300/30 bg-emerald-950/40 px-4 py-3 text-sm text-emerald-100">
+              {successMessage}
+            </div>
+          ) : null}
         </Card>
 
         {isLoading ? (
@@ -359,6 +443,12 @@ export default function AgendaPage() {
                     const isRecentlyUpdated = recentlyUpdatedOrderIds.includes(
                       order.id,
                     );
+                    const statusDisabled =
+                      isPending && pendingOrderId === order.id;
+                    const deliveryWhatsAppUrl = buildWhatsAppLink(
+                      order.customer.phone,
+                      `Oi, ${order.customer.name}.\n\nSeu pedido está em andamento para entrega.\nStatus atual: ${orderStatusConfig[order.status].label}.\n${order.desiredDate ? `Data combinada: ${formatOrderDesiredDate(order.desiredDate)}.\n` : ""}Se precisar, me chama por aqui.`,
+                    );
 
                     return (
                       <div
@@ -384,6 +474,7 @@ export default function AgendaPage() {
 
                           <div className="grid gap-2 text-sm text-text-muted">
                             <p>Recebimento: {formatDeliveryMethodLabel(order.deliveryMethod)}</p>
+                            <p>Operacao: {getOperationalReadinessLabel(order.status)}</p>
                             <p>Total: {formatPrice(order.totalPrice)}</p>
                             <p>Itens: {summarizeItems(order.items)}</p>
                             <p>Endereco: {formatOrderAddress(order) ?? "Nao informado"}</p>
@@ -399,12 +490,56 @@ export default function AgendaPage() {
                             </div>
                           ) : null}
 
-                          <Link
-                            className="inline-flex w-full items-center justify-center rounded-[var(--radius-control)] border border-border-strong bg-surface px-4 py-3 text-sm font-semibold text-foreground transition hover:bg-background/40"
-                            href={`/admin/pedidos/${order.id}`}
-                          >
-                            Abrir detalhe
-                          </Link>
+                          <div className="grid gap-2">
+                            <label className="block space-y-2">
+                              <span className="text-sm font-medium text-foreground">
+                                Atualizar status
+                              </span>
+                              <Select
+                                disabled={statusDisabled}
+                                value={order.status}
+                                onChange={(event) =>
+                                  startTransition(() => {
+                                    void handleStatusChange(
+                                      order.id,
+                                      event.target.value as OrderStatus,
+                                    );
+                                  })
+                                }
+                              >
+                                {orderStatuses.map((status) => (
+                                  <option key={status} value={status}>
+                                    {orderStatusConfig[status].label}
+                                  </option>
+                                ))}
+                              </Select>
+                            </label>
+
+                            <div className="grid gap-2 sm:grid-cols-2">
+                              <Button
+                                disabled={!deliveryWhatsAppUrl}
+                                type="button"
+                                variant="secondary"
+                                onClick={() => {
+                                  if (deliveryWhatsAppUrl) {
+                                    window.open(
+                                      deliveryWhatsAppUrl,
+                                      "_blank",
+                                      "noopener,noreferrer",
+                                    );
+                                  }
+                                }}
+                              >
+                                WhatsApp
+                              </Button>
+                              <Link
+                                className="inline-flex w-full items-center justify-center rounded-[var(--radius-control)] border border-border-strong bg-surface px-4 py-3 text-sm font-semibold text-foreground transition hover:bg-background/40"
+                                href={`/admin/pedidos/${order.id}`}
+                              >
+                                Abrir detalhe
+                              </Link>
+                            </div>
+                          </div>
                         </div>
                       </div>
                     );
@@ -438,7 +573,10 @@ export default function AgendaPage() {
                     const isRecentlyUpdated = recentlyUpdatedOrderIds.includes(
                       order.id,
                     );
-                    const pickupWhatsAppMessage = buildPickupWhatsAppMessage({
+                    const statusDisabled =
+                      isPending && pendingOrderId === order.id;
+                    const pickupWhatsAppMessage =
+                      buildPickupCoordinationWhatsAppMessage({
                       customerName: order.customer.name,
                       desiredDate: order.desiredDate,
                       items: order.items.map((item) => ({
@@ -448,7 +586,7 @@ export default function AgendaPage() {
                       })),
                     });
                     const pickupWhatsAppUrl = buildWhatsAppLink(
-                      giuWhatsAppPhone,
+                      order.customer.phone,
                       pickupWhatsAppMessage,
                     );
 
@@ -476,6 +614,7 @@ export default function AgendaPage() {
 
                           <div className="grid gap-2 text-sm text-text-muted">
                             <p>Recebimento: {formatDeliveryMethodLabel(order.deliveryMethod)}</p>
+                            <p>Operacao: {getOperationalReadinessLabel(order.status)}</p>
                             <p>Total: {formatPrice(order.totalPrice)}</p>
                             <p>Itens: {summarizeItems(order.items)}</p>
                             <p>Pedido: {order.id}</p>
@@ -491,29 +630,55 @@ export default function AgendaPage() {
                             </div>
                           ) : null}
 
-                          <div className="grid gap-2 sm:grid-cols-2">
-                            <Button
-                              disabled={!pickupWhatsAppUrl}
-                              type="button"
-                              variant="secondary"
-                              onClick={() => {
-                                if (pickupWhatsAppUrl) {
-                                  window.open(
-                                    pickupWhatsAppUrl,
-                                    "_blank",
-                                    "noopener,noreferrer",
-                                  );
+                          <div className="grid gap-2">
+                            <label className="block space-y-2">
+                              <span className="text-sm font-medium text-foreground">
+                                Atualizar status
+                              </span>
+                              <Select
+                                disabled={statusDisabled}
+                                value={order.status}
+                                onChange={(event) =>
+                                  startTransition(() => {
+                                    void handleStatusChange(
+                                      order.id,
+                                      event.target.value as OrderStatus,
+                                    );
+                                  })
                                 }
-                              }}
-                            >
-                              Combinar retirada
-                            </Button>
-                            <Link
-                              className="inline-flex w-full items-center justify-center rounded-[var(--radius-control)] border border-border-strong bg-surface px-4 py-3 text-sm font-semibold text-foreground transition hover:bg-background/40"
-                              href={`/admin/pedidos/${order.id}`}
-                            >
-                              Abrir detalhe
-                            </Link>
+                              >
+                                {orderStatuses.map((status) => (
+                                  <option key={status} value={status}>
+                                    {orderStatusConfig[status].label}
+                                  </option>
+                                ))}
+                              </Select>
+                            </label>
+
+                            <div className="grid gap-2 sm:grid-cols-2">
+                              <Button
+                                disabled={!pickupWhatsAppUrl}
+                                type="button"
+                                variant="secondary"
+                                onClick={() => {
+                                  if (pickupWhatsAppUrl) {
+                                    window.open(
+                                      pickupWhatsAppUrl,
+                                      "_blank",
+                                      "noopener,noreferrer",
+                                    );
+                                  }
+                                }}
+                              >
+                                Combinar retirada
+                              </Button>
+                              <Link
+                                className="inline-flex w-full items-center justify-center rounded-[var(--radius-control)] border border-border-strong bg-surface px-4 py-3 text-sm font-semibold text-foreground transition hover:bg-background/40"
+                                href={`/admin/pedidos/${order.id}`}
+                              >
+                                Abrir detalhe
+                              </Link>
+                            </div>
                           </div>
                         </div>
                       </div>

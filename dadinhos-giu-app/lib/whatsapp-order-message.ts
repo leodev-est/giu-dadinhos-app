@@ -80,6 +80,34 @@ export function buildPickupWhatsAppMessage(input: {
   return lines.join("\n");
 }
 
+export function buildPickupCoordinationWhatsAppMessage(input: {
+  customerName: string;
+  desiredDate?: string | null;
+  items: Array<{
+    quantity: number;
+    productName: string;
+  }>;
+}) {
+  const itemsSummary = input.items
+    .map((item) => `${item.productName} x${item.quantity}`)
+    .join(", ");
+  const desiredDate = formatOrderDesiredDate(input.desiredDate);
+  const lines = [
+    `Oi, ${input.customerName}.`,
+    "",
+    "Estou passando para combinar a retirada do seu pedido.",
+    `Itens: ${itemsSummary}`,
+  ];
+
+  if (desiredDate) {
+    lines.push(`Data combinada: ${desiredDate}`);
+  }
+
+  lines.push("", "Me avise por aqui qual horario funciona melhor para voce.");
+
+  return lines.join("\n");
+}
+
 export function buildWhatsAppOrderMessage(
   order: WhatsAppOrderMessageInput,
   templateStatus: WhatsAppOrderStatus,
