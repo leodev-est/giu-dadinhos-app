@@ -19,6 +19,18 @@ enum DeliveryMethod {
   PICKUP
 }
 
+enum PaymentProvider {
+  MANUAL_PIX
+  ASAAS
+}
+
+enum PaymentStatus {
+  PENDING
+  CONFIRMED
+  FAILED
+  EXPIRED
+}
+
 model Customer {
   id        String   @id @default(uuid())
   name      String
@@ -45,6 +57,13 @@ model Order {
   status     OrderStatus @default(PENDING)
   deliveryMethod DeliveryMethod @default(DELIVERY)
   deliveryOrder Int?
+  paymentProvider PaymentProvider @default(MANUAL_PIX)
+  paymentStatus PaymentStatus @default(PENDING)
+  paymentExternalId String?
+  paymentQrCode String?
+  paymentQrCodeImage String?
+  paymentExpiresAt DateTime?
+  paidAt DateTime?
   totalPrice Decimal     @db.Decimal(10, 2)
   desiredDate String?
   zipCode String?
@@ -62,6 +81,8 @@ model Order {
 
   @@index([customerId, createdAt])
   @@index([desiredDate, deliveryMethod, deliveryOrder])
+  @@index([paymentStatus, paymentProvider])
+  @@index([paymentExternalId])
 }
 
 model OrderItem {

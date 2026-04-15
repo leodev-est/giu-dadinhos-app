@@ -30,6 +30,7 @@ type PrismaDb = {
   };
   order: {
     create: (args: unknown) => Promise<unknown>;
+    findFirst: (args: unknown) => Promise<unknown>;
     findMany: (args: unknown) => Promise<unknown[]>;
     findUnique: (args: unknown) => Promise<unknown>;
     update: (args: unknown) => Promise<unknown>;

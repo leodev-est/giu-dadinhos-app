@@ -17,6 +17,7 @@ import {
   type DeliveryMethod,
 } from "@/lib/order-formatters";
 import { hasPixKeyConfigured, pixConfig } from "@/lib/payment-config";
+import { paymentStatusConfig, type PaymentStatus } from "@/lib/payment-status";
 import { buildPixPayload } from "@/lib/pix";
 import { buildPublicWhatsAppUrl } from "@/lib/public-whatsapp";
 
@@ -36,6 +37,16 @@ type OrderResponse = {
   addressNumber?: string | null;
   addressComplement?: string | null;
   notes?: string | null;
+  payment?: {
+    provider: "MANUAL_PIX" | "ASAAS";
+    status: PaymentStatus;
+    externalId?: string | null;
+    pixCopyAndPaste?: string | null;
+    qrCodeImage?: string | null;
+    expiresAt?: string | null;
+    paidAt?: string | null;
+  } | null;
+  paymentWarning?: string | null;
 };
 type ApiError = { error?: string };
 type ViaCepResponse = { cep?: string; logradouro?: string; bairro?: string; localidade?: string; uf?: string; erro?: boolean };
@@ -179,8 +190,14 @@ export function PublicOrderPage() {
     return buildPublicWhatsAppUrl(`Ola! Acabei de fazer o pedido ${successOrder.id} no valor de ${formatPrice(successOrder.totalPrice)}. ${contextMessage}`);
   }, [successOrder]);
   const pixPayload = useMemo(() => {
+    if (successOrder?.payment?.pixCopyAndPaste) {
+      return successOrder.payment.pixCopyAndPaste;
+    }
+
     return safeBuildPixPayload(successOrder);
   }, [successOrder]);
+
+  const asaasQrCodeImage = successOrder?.payment?.qrCodeImage ?? null;
 
   function updateField<Field extends keyof ReturnType<typeof createInitialFormState>>(field: Field, value: ReturnType<typeof createInitialFormState>[Field]) {
     setFormState((current) => ({ ...current, [field]: value }));
@@ -334,7 +351,16 @@ export function PublicOrderPage() {
               </div>
               <div className="mt-4 flex justify-center">
                 <div className="rounded-[var(--radius-control)] border border-border-soft bg-white p-4 shadow-soft">
-                  {pixPayload ? (
+                  {asaasQrCodeImage ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      alt="QR Code PIX"
+                      className="h-48 w-48 object-contain"
+                      height={192}
+                      src={asaasQrCodeImage}
+                      width={192}
+                    />
+                  ) : pixPayload ? (
                     <QRCodeSVG
                       bgColor="#ffffff"
                       fgColor="#2b1a12"
@@ -350,7 +376,24 @@ export function PublicOrderPage() {
                   )}
                 </div>
               </div>
+              {successOrder?.paymentWarning ? (
+                <p className="mt-4 text-sm text-text-muted">
+                  {successOrder.paymentWarning}
+                </p>
+              ) : null}
+              {successOrder?.payment?.expiresAt ? (
+                <p className="mt-2 text-sm text-text-muted">
+                  Cobranca dinamica valida ate{" "}
+                  {new Date(successOrder.payment.expiresAt).toLocaleString("pt-BR")}.
+                </p>
+              ) : null}
               <div className="mt-4 rounded-[var(--radius-control)] border border-border-soft bg-background/25 p-4">
+                {successOrder?.payment ? (
+                  <p className="mb-3 text-sm text-text-muted">
+                    Status do pagamento:{" "}
+                    {paymentStatusConfig[successOrder.payment.status].label}
+                  </p>
+                ) : null}
                 <p className="text-xs font-semibold uppercase tracking-[0.16em] text-text-muted">Chave PIX</p>
                 <p className="mt-2 break-all text-base font-semibold text-foreground">
                   {hasPixKeyConfigured()

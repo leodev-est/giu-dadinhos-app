@@ -20,6 +20,7 @@ import {
 } from "@/lib/order-formatters";
 import { Input } from "@/components/ui/input";
 import { orderStatusConfig, type OrderStatus } from "@/lib/order-status";
+import { paymentStatusConfig, type PaymentStatus } from "@/lib/payment-status";
 import { PageContainer } from "@/components/ui/page-container";
 import { PageTitle } from "@/components/ui/page-title";
 import { Select } from "@/components/ui/select";
@@ -29,6 +30,13 @@ type Order = {
   id: string;
   status: OrderStatus;
   deliveryMethod: DeliveryMethod;
+  payment?: {
+    provider: "MANUAL_PIX" | "ASAAS";
+    status: PaymentStatus;
+    externalId?: string | null;
+    expiresAt?: string | null;
+    paidAt?: string | null;
+  } | null;
   totalPrice: number;
   desiredDate?: string | null;
   zipCode?: string | null;
@@ -133,7 +141,8 @@ export default function AdminPedidosPage() {
           previousOrder.totalPrice !== order.totalPrice ||
           previousOrder.desiredDate !== order.desiredDate ||
           previousOrder.deliveryMethod !== order.deliveryMethod ||
-          previousOrder.notes !== order.notes
+          previousOrder.notes !== order.notes ||
+          previousOrder.payment?.status !== order.payment?.status
         );
       })
       .map((order) => order.id);
@@ -479,6 +488,12 @@ export default function AdminPedidosPage() {
                         <p>Telefone: {order.customer.phone}</p>
                         <p>Total: {formatPrice(order.totalPrice)}</p>
                         <p>Status: {orderStatusConfig[order.status].label}</p>
+                        <p>
+                          Pagamento:{" "}
+                          {order.payment
+                            ? paymentStatusConfig[order.payment.status].label
+                            : "Nao informado"}
+                        </p>
                         <p>Recebimento: {formatDeliveryMethodLabel(order.deliveryMethod)}</p>
                         <p>Pedido: {order.id}</p>
                         <p>Criado em: {formatDate(order.createdAt)}</p>

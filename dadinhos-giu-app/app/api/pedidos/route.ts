@@ -1,3 +1,8 @@
+import {
+  createDynamicPixPayment,
+  isAsaasPixEnabled,
+  type AsaasDynamicPixPayment,
+} from "@/lib/asaas";
 import { prisma } from "@/lib/prisma";
 import { hasOrderDeliveryOrderColumn } from "@/lib/order-delivery-order";
 import { mapApiStatusToDb, mapDbStatusToApi } from "@/lib/order-status";
@@ -72,6 +77,13 @@ function buildOrderSelect(includeDeliveryOrder: boolean) {
     status: true,
     deliveryMethod: true,
     ...(includeDeliveryOrder ? { deliveryOrder: true } : {}),
+    paymentProvider: true,
+    paymentStatus: true,
+    paymentExternalId: true,
+    paymentQrCode: true,
+    paymentQrCodeImage: true,
+    paymentExpiresAt: true,
+    paidAt: true,
     totalPrice: true,
     desiredDate: true,
     zipCode: true,
@@ -119,6 +131,13 @@ type CreatedOrder = {
   status: string;
   deliveryMethod: "DELIVERY" | "PICKUP";
   deliveryOrder?: number | null;
+  paymentProvider: "MANUAL_PIX" | "ASAAS";
+  paymentStatus: "PENDING" | "CONFIRMED" | "FAILED" | "EXPIRED";
+  paymentExternalId?: string | null;
+  paymentQrCode?: string | null;
+  paymentQrCodeImage?: string | null;
+  paymentExpiresAt?: Date | null;
+  paidAt?: Date | null;
   totalPrice: DecimalLike;
   desiredDate?: string | null;
   zipCode?: string | null;
@@ -146,6 +165,15 @@ type CreatedOrder = {
     };
   }>;
 };
+
+function getTodayDateInSaoPaulo() {
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: "America/Sao_Paulo",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(new Date());
+}
 
 class BadRequestError extends Error {
   constructor(message: string) {
@@ -314,6 +342,8 @@ export async function POST(request: Request) {
           customerId: customer.id,
           status: mapApiStatusToDb("CREATED"),
           deliveryMethod: parsedBody.data.deliveryMethod,
+          paymentProvider: "MANUAL_PIX",
+          paymentStatus: "PENDING",
           totalPrice: totalPrice.toFixed(2),
           ...(getOptionalString(parsedBody.data.desiredDate)
             ? { desiredDate: parsedBody.data.desiredDate }
@@ -361,12 +391,60 @@ export async function POST(request: Request) {
       }) as Promise<CreatedOrder>;
     });
 
+    let payment: AsaasDynamicPixPayment | null = null;
+    let paymentWarning: string | null = null;
+
+    if (isAsaasPixEnabled()) {
+      try {
+        payment = await createDynamicPixPayment({
+          orderId: order.id,
+          customerName: order.customer.name,
+          customerPhone: order.customer.phone,
+          totalPrice: order.totalPrice.toNumber(),
+          dueDate: order.desiredDate ?? getTodayDateInSaoPaulo(),
+        });
+
+        await prisma.order.update({
+          where: {
+            id: order.id,
+          },
+          data: {
+            paymentProvider: "ASAAS",
+            paymentStatus: "PENDING",
+            paymentExternalId: payment.externalId,
+            paymentQrCode: payment.pixCopyAndPaste,
+            paymentQrCodeImage: payment.qrCodeImage,
+            paymentExpiresAt: payment.expiresAt
+              ? new Date(payment.expiresAt)
+              : null,
+          },
+        });
+      } catch (error) {
+        console.error("Erro ao gerar cobranca Pix dinamica no Asaas:", error);
+        paymentWarning =
+          "Nao foi possivel gerar a cobranca Pix dinamica agora. Exibindo o Pix manual como fallback.";
+      }
+    }
+
     return Response.json(
       {
         id: order.id,
         status: mapDbStatusToApi(order.status),
         deliveryMethod: order.deliveryMethod,
         deliveryOrder: getDeliveryOrderValue(order, includeDeliveryOrder),
+        payment: {
+          provider: payment?.provider ?? order.paymentProvider,
+          status: payment ? "PENDING" : order.paymentStatus,
+          externalId: payment?.externalId ?? order.paymentExternalId ?? null,
+          pixCopyAndPaste:
+            payment?.pixCopyAndPaste ?? order.paymentQrCode ?? null,
+          qrCodeImage:
+            payment?.qrCodeImage ?? order.paymentQrCodeImage ?? null,
+          expiresAt:
+            payment?.expiresAt ??
+            (order.paymentExpiresAt ? order.paymentExpiresAt.toISOString() : null),
+          paidAt: order.paidAt ? order.paidAt.toISOString() : null,
+        },
         totalPrice: order.totalPrice.toNumber(),
         desiredDate: order.desiredDate ?? null,
         zipCode: order.zipCode ?? null,
@@ -390,6 +468,7 @@ export async function POST(request: Request) {
           quantity: item.quantity,
           price: item.price.toNumber(),
         })),
+        paymentWarning,
       },
       { status: 201 },
     );
@@ -428,6 +507,13 @@ type ListedOrder = {
   status: string;
   deliveryMethod: "DELIVERY" | "PICKUP";
   deliveryOrder?: number | null;
+  paymentProvider: "MANUAL_PIX" | "ASAAS";
+  paymentStatus: "PENDING" | "CONFIRMED" | "FAILED" | "EXPIRED";
+  paymentExternalId?: string | null;
+  paymentQrCode?: string | null;
+  paymentQrCodeImage?: string | null;
+  paymentExpiresAt?: Date | null;
+  paidAt?: Date | null;
   totalPrice: DecimalLike;
   desiredDate?: string | null;
   zipCode?: string | null;
@@ -482,6 +568,15 @@ export async function GET() {
         status: mapDbStatusToApi(order.status),
         deliveryMethod: order.deliveryMethod,
         deliveryOrder: getDeliveryOrderValue(order, includeDeliveryOrder),
+        payment: {
+          provider: order.paymentProvider,
+          status: order.paymentStatus,
+          externalId: order.paymentExternalId ?? null,
+          pixCopyAndPaste: order.paymentQrCode ?? null,
+          qrCodeImage: order.paymentQrCodeImage ?? null,
+          expiresAt: order.paymentExpiresAt?.toISOString() ?? null,
+          paidAt: order.paidAt?.toISOString() ?? null,
+        },
         totalPrice: order.totalPrice.toNumber(),
         desiredDate: order.desiredDate ?? null,
         zipCode: order.zipCode ?? null,

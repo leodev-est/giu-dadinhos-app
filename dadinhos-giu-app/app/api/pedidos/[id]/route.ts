@@ -18,6 +18,13 @@ type PedidoComRelacoes = {
   status: string;
   deliveryMethod: "DELIVERY" | "PICKUP";
   deliveryOrder?: number | null;
+  paymentProvider: "MANUAL_PIX" | "ASAAS";
+  paymentStatus: "PENDING" | "CONFIRMED" | "FAILED" | "EXPIRED";
+  paymentExternalId?: string | null;
+  paymentQrCode?: string | null;
+  paymentQrCodeImage?: string | null;
+  paymentExpiresAt?: Date | null;
+  paidAt?: Date | null;
   totalPrice: DecimalLike;
   desiredDate?: string | null;
   zipCode?: string | null;
@@ -109,6 +116,13 @@ function buildPedidoSelect(includeDeliveryOrder: boolean) {
     status: true,
     deliveryMethod: true,
     ...(includeDeliveryOrder ? { deliveryOrder: true } : {}),
+    paymentProvider: true,
+    paymentStatus: true,
+    paymentExternalId: true,
+    paymentQrCode: true,
+    paymentQrCodeImage: true,
+    paymentExpiresAt: true,
+    paidAt: true,
     totalPrice: true,
     desiredDate: true,
     zipCode: true,
@@ -172,6 +186,15 @@ function formatPedido(
     status: mapDbStatusToApi(pedido.status),
     deliveryMethod: pedido.deliveryMethod,
     deliveryOrder: includeDeliveryOrder ? (pedido.deliveryOrder ?? null) : null,
+    payment: {
+      provider: pedido.paymentProvider,
+      status: pedido.paymentStatus,
+      externalId: pedido.paymentExternalId ?? null,
+      pixCopyAndPaste: pedido.paymentQrCode ?? null,
+      qrCodeImage: pedido.paymentQrCodeImage ?? null,
+      expiresAt: pedido.paymentExpiresAt?.toISOString() ?? null,
+      paidAt: pedido.paidAt?.toISOString() ?? null,
+    },
     totalPrice: pedido.totalPrice.toNumber(),
     desiredDate: pedido.desiredDate ?? null,
     zipCode: pedido.zipCode ?? null,
