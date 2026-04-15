@@ -53,22 +53,16 @@ function safeBuildPixPayload(order: OrderResponse | null) {
       return buildPixPayload({
         pixKey: pixConfig.key,
         amount: order.totalPrice,
-        description: `Pedido ${order.id}`,
-        txid: order.id.replace(/-/g, "").slice(0, 25),
       });
     }
 
     return buildPixPayload({
       pixKey: pixConfig.key,
-      description: "Dadinhos da Giu",
-      txid: "DADINHOSGIU",
     });
   } catch {
     try {
       return buildPixPayload({
         pixKey: pixConfig.key,
-        description: "Dadinhos da Giu",
-        txid: "DADINHOSGIU",
       });
     } catch {
       return "";

@@ -45,11 +45,7 @@ export function buildPixPayload(input: {
 }) {
   const merchantAccount = formatPixField(
     "26",
-    `${formatPixField("00", PIX_GUI)}${formatPixField("01", input.pixKey)}${
-      input.description
-        ? formatPixField("02", normalizePixText(input.description, 72))
-        : ""
-    }`,
+    `${formatPixField("00", PIX_GUI)}${formatPixField("01", input.pixKey)}`,
   );
 
   const txid = normalizePixText(input.txid?.trim() || "***", 25) || "***";
@@ -60,7 +56,6 @@ export function buildPixPayload(input: {
 
   const payloadWithoutCrc = [
     formatPixField("00", "01"),
-    formatPixField("01", "12"),
     merchantAccount,
     formatPixField("52", "0000"),
     formatPixField("53", CURRENCY_BRL),
@@ -74,4 +69,3 @@ export function buildPixPayload(input: {
 
   return `${payloadWithoutCrc}${crc16(payloadWithoutCrc)}`;
 }
-
