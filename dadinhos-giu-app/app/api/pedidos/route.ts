@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import { hasOrderDeliveryOrderColumn } from "@/lib/order-delivery-order";
 import { mapApiStatusToDb, mapDbStatusToApi } from "@/lib/order-status";
 import { z } from "zod";
 
@@ -65,6 +66,54 @@ type CustomerRecord = {
   phone: string;
 };
 
+function buildOrderSelect(includeDeliveryOrder: boolean) {
+  return {
+    id: true,
+    status: true,
+    deliveryMethod: true,
+    ...(includeDeliveryOrder ? { deliveryOrder: true } : {}),
+    totalPrice: true,
+    desiredDate: true,
+    zipCode: true,
+    street: true,
+    neighborhood: true,
+    city: true,
+    state: true,
+    addressNumber: true,
+    addressComplement: true,
+    notes: true,
+    createdAt: true,
+    customer: {
+      select: {
+        id: true,
+        name: true,
+        phone: true,
+      },
+    },
+    items: {
+      select: {
+        id: true,
+        productId: true,
+        quantity: true,
+        price: true,
+        product: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
+      },
+    },
+  };
+}
+
+function getDeliveryOrderValue(
+  order: { deliveryOrder?: number | null },
+  includeDeliveryOrder: boolean,
+) {
+  return includeDeliveryOrder ? (order.deliveryOrder ?? null) : null;
+}
+
 type CreatedOrder = {
   id: string;
   status: string;
@@ -126,6 +175,7 @@ function getOptionalString(value?: string) {
 
 export async function POST(request: Request) {
   try {
+    const includeDeliveryOrder = await hasOrderDeliveryOrderColumn();
     const body = await request.json();
     const parsedBody = createOrderSchema.safeParse(body);
 
@@ -307,19 +357,7 @@ export async function POST(request: Request) {
             })),
           },
         },
-        include: {
-          customer: true,
-          items: {
-            include: {
-              product: {
-                select: {
-                  id: true,
-                  name: true,
-                },
-              },
-            },
-          },
-        },
+        select: buildOrderSelect(includeDeliveryOrder),
       }) as Promise<CreatedOrder>;
     });
 
@@ -328,7 +366,7 @@ export async function POST(request: Request) {
         id: order.id,
         status: mapDbStatusToApi(order.status),
         deliveryMethod: order.deliveryMethod,
-        deliveryOrder: order.deliveryOrder ?? null,
+        deliveryOrder: getDeliveryOrderValue(order, includeDeliveryOrder),
         totalPrice: order.totalPrice.toNumber(),
         desiredDate: order.desiredDate ?? null,
         zipCode: order.zipCode ?? null,
@@ -417,17 +455,14 @@ type ListedOrder = {
 
 export async function GET() {
   try {
+    const includeDeliveryOrder = await hasOrderDeliveryOrderColumn();
     const orders = (await prisma.order.findMany({
-      include: {
-        customer: {
-          select: {
-            id: true,
-            name: true,
-            phone: true,
-          },
-        },
+      select: {
+        ...buildOrderSelect(includeDeliveryOrder),
         items: {
-          include: {
+          select: {
+            quantity: true,
+            price: true,
             product: {
               select: {
                 name: true,
@@ -446,7 +481,7 @@ export async function GET() {
         id: order.id,
         status: mapDbStatusToApi(order.status),
         deliveryMethod: order.deliveryMethod,
-        deliveryOrder: order.deliveryOrder ?? null,
+        deliveryOrder: getDeliveryOrderValue(order, includeDeliveryOrder),
         totalPrice: order.totalPrice.toNumber(),
         desiredDate: order.desiredDate ?? null,
         zipCode: order.zipCode ?? null,

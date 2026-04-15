@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import { hasOrderDeliveryOrderColumn } from "@/lib/order-delivery-order";
 import {
   mapApiStatusToDb,
   mapDbStatusToApi,
@@ -102,6 +103,47 @@ const patchOrderSchema = z.object({
   notes: z.string().trim().max(500, "Observacao muito longa.").optional(),
 });
 
+function buildPedidoSelect(includeDeliveryOrder: boolean) {
+  return {
+    id: true,
+    status: true,
+    deliveryMethod: true,
+    ...(includeDeliveryOrder ? { deliveryOrder: true } : {}),
+    totalPrice: true,
+    desiredDate: true,
+    zipCode: true,
+    street: true,
+    neighborhood: true,
+    city: true,
+    state: true,
+    addressNumber: true,
+    addressComplement: true,
+    notes: true,
+    createdAt: true,
+    customer: {
+      select: {
+        id: true,
+        name: true,
+        phone: true,
+      },
+    },
+    items: {
+      select: {
+        id: true,
+        quantity: true,
+        price: true,
+        product: {
+          select: {
+            id: true,
+            name: true,
+            price: true,
+          },
+        },
+      },
+    },
+  };
+}
+
 function formatPedidoHistorico(pedido: PedidoHistoricoCliente, currentOrderId: string) {
   return {
     id: pedido.id,
@@ -121,12 +163,15 @@ function formatPedidoHistorico(pedido: PedidoHistoricoCliente, currentOrderId: s
   };
 }
 
-function formatPedido(pedido: PedidoComRelacoes) {
+function formatPedido(
+  pedido: PedidoComRelacoes,
+  includeDeliveryOrder: boolean,
+) {
   return {
     id: pedido.id,
     status: mapDbStatusToApi(pedido.status),
     deliveryMethod: pedido.deliveryMethod,
-    deliveryOrder: pedido.deliveryOrder ?? null,
+    deliveryOrder: includeDeliveryOrder ? (pedido.deliveryOrder ?? null) : null,
     totalPrice: pedido.totalPrice.toNumber(),
     desiredDate: pedido.desiredDate ?? null,
     zipCode: pedido.zipCode ?? null,
@@ -156,19 +201,12 @@ function formatPedido(pedido: PedidoComRelacoes) {
   };
 }
 
-async function getPedidoById(id: string) {
+async function getPedidoById(id: string, includeDeliveryOrder: boolean) {
   return (await prisma.order.findUnique({
     where: {
       id,
     },
-    include: {
-      customer: true,
-      items: {
-        include: {
-          product: true,
-        },
-      },
-    },
+    select: buildPedidoSelect(includeDeliveryOrder),
   })) as PedidoComRelacoes | null;
 }
 
@@ -207,7 +245,8 @@ export async function GET(
 ) {
   try {
     const { id } = await context.params;
-    const pedido = await getPedidoById(id);
+    const includeDeliveryOrder = await hasOrderDeliveryOrderColumn();
+    const pedido = await getPedidoById(id, includeDeliveryOrder);
 
     if (!pedido) {
       return Response.json(
@@ -221,7 +260,7 @@ export async function GET(
     const historicoCliente = await getHistoricoCliente(pedido.customer.id);
 
     return Response.json({
-      ...formatPedido(pedido),
+      ...formatPedido(pedido, includeDeliveryOrder),
       customerHistory: historicoCliente.map((item) =>
         formatPedidoHistorico(item, pedido.id),
       ),
@@ -244,6 +283,7 @@ export async function PATCH(
 ) {
   try {
     const { id } = await context.params;
+    const includeDeliveryOrder = await hasOrderDeliveryOrderColumn();
     const body = (await request.json()) as Record<string, unknown>;
 
     if (!hasEditableFields(body)) {
@@ -267,7 +307,7 @@ export async function PATCH(
       );
     }
 
-    const pedidoExistente = await getPedidoById(id);
+    const pedidoExistente = await getPedidoById(id, includeDeliveryOrder);
 
     if (!pedidoExistente) {
       return Response.json(
@@ -291,6 +331,15 @@ export async function PATCH(
     }
 
     if (Object.prototype.hasOwnProperty.call(body, "deliveryOrder")) {
+      if (!includeDeliveryOrder) {
+        return Response.json(
+          {
+            error: "A ordenacao de rota ainda nao esta disponivel neste ambiente.",
+          },
+          { status: 409 },
+        );
+      }
+
       updateData.deliveryOrder = parsedBody.data.deliveryOrder ?? null;
     }
 
@@ -352,20 +401,13 @@ export async function PATCH(
         id,
       },
       data: updateData,
-      include: {
-        customer: true,
-        items: {
-          include: {
-            product: true,
-          },
-        },
-      },
+      select: buildPedidoSelect(includeDeliveryOrder),
     })) as PedidoComRelacoes;
 
     const historicoCliente = await getHistoricoCliente(pedidoAtualizado.customer.id);
 
     return Response.json({
-      ...formatPedido(pedidoAtualizado),
+      ...formatPedido(pedidoAtualizado, includeDeliveryOrder),
       customerHistory: historicoCliente.map((item) =>
         formatPedidoHistorico(item, pedidoAtualizado.id),
       ),
