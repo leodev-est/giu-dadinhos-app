@@ -69,6 +69,7 @@ type CreatedOrder = {
   id: string;
   status: string;
   deliveryMethod: "DELIVERY" | "PICKUP";
+  deliveryOrder?: number | null;
   totalPrice: DecimalLike;
   desiredDate?: string | null;
   zipCode?: string | null;
@@ -327,6 +328,7 @@ export async function POST(request: Request) {
         id: order.id,
         status: mapDbStatusToApi(order.status),
         deliveryMethod: order.deliveryMethod,
+        deliveryOrder: order.deliveryOrder ?? null,
         totalPrice: order.totalPrice.toNumber(),
         desiredDate: order.desiredDate ?? null,
         zipCode: order.zipCode ?? null,
@@ -387,6 +389,7 @@ type ListedOrder = {
   id: string;
   status: string;
   deliveryMethod: "DELIVERY" | "PICKUP";
+  deliveryOrder?: number | null;
   totalPrice: DecimalLike;
   desiredDate?: string | null;
   zipCode?: string | null;
@@ -443,6 +446,7 @@ export async function GET() {
         id: order.id,
         status: mapDbStatusToApi(order.status),
         deliveryMethod: order.deliveryMethod,
+        deliveryOrder: order.deliveryOrder ?? null,
         totalPrice: order.totalPrice.toNumber(),
         desiredDate: order.desiredDate ?? null,
         zipCode: order.zipCode ?? null,

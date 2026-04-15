@@ -32,6 +32,7 @@ type AgendaOrder = {
   id: string;
   status: OrderStatus;
   deliveryMethod: DeliveryMethod;
+  deliveryOrder?: number | null;
   totalPrice: number;
   desiredDate?: string | null;
   zipCode?: string | null;
@@ -106,6 +107,13 @@ function summarizeItems(items: AgendaOrder["items"]) {
 }
 
 function compareOrders(first: AgendaOrder, second: AgendaOrder) {
+  const firstDeliveryOrder = first.deliveryOrder ?? Number.MAX_SAFE_INTEGER;
+  const secondDeliveryOrder = second.deliveryOrder ?? Number.MAX_SAFE_INTEGER;
+
+  if (firstDeliveryOrder !== secondDeliveryOrder) {
+    return firstDeliveryOrder - secondDeliveryOrder;
+  }
+
   const urgencyOrder: Record<OrderStatus, number> = {
     CREATED: 0,
     READY: 1,
@@ -323,6 +331,56 @@ export default function AgendaPage() {
     }
   }
 
+  async function handleDeliveryOrderChange(
+    orderId: string,
+    deliveryOrder: number | null,
+  ) {
+    setErrorMessage("");
+    setSuccessMessage("");
+    setPendingOrderId(orderId);
+
+    try {
+      const response = await fetch(`/api/pedidos/${orderId}`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ deliveryOrder }),
+      });
+
+      const data = (await response.json()) as AgendaOrder | { error?: string };
+
+      if (!response.ok) {
+        setErrorMessage(
+          "error" in data
+            ? data.error ?? "Nao foi possivel atualizar a ordem da rota."
+            : "Nao foi possivel atualizar a ordem da rota.",
+        );
+        return;
+      }
+
+      if (!("deliveryOrder" in data)) {
+        setErrorMessage("Nao foi possivel atualizar a ordem da rota.");
+        return;
+      }
+
+      setOrders((current) =>
+        current.map((order) =>
+          order.id === orderId
+            ? { ...order, deliveryOrder: data.deliveryOrder }
+            : order,
+        ),
+      );
+      setLastSyncedAt(new Date());
+      setRecentlyUpdatedOrderIds([orderId]);
+      setSuccessMessage("Ordem da rota atualizada.");
+    } catch {
+      setErrorMessage("Nao foi possivel atualizar a ordem da rota.");
+    } finally {
+      setPendingOrderId(null);
+    }
+  }
+
   const ordersForSelectedDate = useMemo(
     () =>
       orders
@@ -334,7 +392,8 @@ export default function AgendaPage() {
   const deliveryOrders = useMemo(
     () =>
       ordersForSelectedDate.filter(
-        (order) => order.deliveryMethod === "DELIVERY",
+        (order) =>
+          order.deliveryMethod === "DELIVERY" && order.status !== "CANCELLED",
       ),
     [ordersForSelectedDate],
   );
@@ -344,6 +403,66 @@ export default function AgendaPage() {
       ordersForSelectedDate.filter((order) => order.deliveryMethod === "PICKUP"),
     [ordersForSelectedDate],
   );
+
+  const activeDeliveryOrders = useMemo(
+    () =>
+      deliveryOrders.filter(
+        (order) =>
+          order.status === "CREATED" ||
+          order.status === "READY" ||
+          order.status === "OUT_FOR_DELIVERY",
+      ),
+    [deliveryOrders],
+  );
+
+  const completedDeliveryOrders = useMemo(
+    () => deliveryOrders.filter((order) => order.status === "DELIVERED"),
+    [deliveryOrders],
+  );
+
+  const deliveriesWithRouteDefined = useMemo(
+    () =>
+      activeDeliveryOrders.filter(
+        (order) => typeof order.deliveryOrder === "number",
+      ).length,
+    [activeDeliveryOrders],
+  );
+
+  function getNextAvailableDeliveryOrder(orderId: string) {
+    const usedOrders = activeDeliveryOrders
+      .filter((order) => order.id !== orderId)
+      .map((order) => order.deliveryOrder)
+      .filter((value): value is number => typeof value === "number");
+
+    const highestOrder = usedOrders.length > 0 ? Math.max(...usedOrders) : 0;
+    return highestOrder + 1;
+  }
+
+  function moveDeliveryOrder(orderId: string, direction: "up" | "down") {
+    const currentIndex = activeDeliveryOrders.findIndex((order) => order.id === orderId);
+
+    if (currentIndex === -1) {
+      return;
+    }
+
+    const targetIndex = direction === "up" ? currentIndex - 1 : currentIndex + 1;
+
+    if (targetIndex < 0 || targetIndex >= activeDeliveryOrders.length) {
+      return;
+    }
+
+    const currentOrder = activeDeliveryOrders[currentIndex];
+    const targetOrder = activeDeliveryOrders[targetIndex];
+    const currentRouteOrder =
+      currentOrder.deliveryOrder ?? getNextAvailableDeliveryOrder(currentOrder.id);
+    const targetRouteOrder =
+      targetOrder.deliveryOrder ?? getNextAvailableDeliveryOrder(targetOrder.id);
+
+    void Promise.all([
+      handleDeliveryOrderChange(currentOrder.id, targetRouteOrder),
+      handleDeliveryOrderChange(targetOrder.id, currentRouteOrder),
+    ]);
+  }
 
   return (
     <main className="min-h-screen bg-background">
@@ -433,13 +552,25 @@ export default function AgendaPage() {
                 </span>
               </div>
 
-              {deliveryOrders.length === 0 ? (
+              <div className="flex flex-wrap gap-3 text-sm text-text-muted">
+                <span className="rounded-full border border-border-soft bg-background/25 px-3 py-1">
+                  {activeDeliveryOrders.length} entrega(s) na rota
+                </span>
+                <span className="rounded-full border border-border-soft bg-background/25 px-3 py-1">
+                  {deliveriesWithRouteDefined} com ordem definida
+                </span>
+                <span className="rounded-full border border-border-soft bg-background/25 px-3 py-1">
+                  {activeDeliveryOrders.length - deliveriesWithRouteDefined} sem ordem
+                </span>
+              </div>
+
+              {activeDeliveryOrders.length === 0 && completedDeliveryOrders.length === 0 ? (
                 <div className="rounded-[var(--radius-control)] border border-dashed border-border-soft bg-background/25 px-4 py-5 text-sm text-text-muted">
                   Nenhuma entrega para esta data.
                 </div>
               ) : (
                 <div className="grid gap-3">
-                  {deliveryOrders.map((order) => {
+                  {activeDeliveryOrders.map((order, index) => {
                     const isRecentlyUpdated = recentlyUpdatedOrderIds.includes(
                       order.id,
                     );
@@ -475,6 +606,10 @@ export default function AgendaPage() {
                           <div className="grid gap-2 text-sm text-text-muted">
                             <p>Recebimento: {formatDeliveryMethodLabel(order.deliveryMethod)}</p>
                             <p>Operacao: {getOperationalReadinessLabel(order.status)}</p>
+                            <p>
+                              Ordem da rota:{" "}
+                              {order.deliveryOrder ? `${order.deliveryOrder}a entrega` : "Nao definida"}
+                            </p>
                             <p>Total: {formatPrice(order.totalPrice)}</p>
                             <p>Itens: {summarizeItems(order.items)}</p>
                             <p>Endereco: {formatOrderAddress(order) ?? "Nao informado"}</p>
@@ -491,6 +626,38 @@ export default function AgendaPage() {
                           ) : null}
 
                           <div className="grid gap-2">
+                            <div className="grid gap-2 sm:grid-cols-3">
+                              <Button
+                                disabled={statusDisabled || index === 0}
+                                type="button"
+                                variant="secondary"
+                                onClick={() => moveDeliveryOrder(order.id, "up")}
+                              >
+                                Subir
+                              </Button>
+                              <Button
+                                disabled={statusDisabled}
+                                type="button"
+                                variant="secondary"
+                                onClick={() =>
+                                  void handleDeliveryOrderChange(
+                                    order.id,
+                                    order.deliveryOrder ?? getNextAvailableDeliveryOrder(order.id),
+                                  )
+                                }
+                              >
+                                {order.deliveryOrder ? "Manter na rota" : "Entrar na rota"}
+                              </Button>
+                              <Button
+                                disabled={statusDisabled || index === activeDeliveryOrders.length - 1}
+                                type="button"
+                                variant="secondary"
+                                onClick={() => moveDeliveryOrder(order.id, "down")}
+                              >
+                                Descer
+                              </Button>
+                            </div>
+
                             <label className="block space-y-2">
                               <span className="text-sm font-medium text-foreground">
                                 Atualizar status
@@ -516,6 +683,16 @@ export default function AgendaPage() {
                             </label>
 
                             <div className="grid gap-2 sm:grid-cols-2">
+                              <Button
+                                disabled={statusDisabled}
+                                type="button"
+                                variant="ghost"
+                                onClick={() =>
+                                  void handleDeliveryOrderChange(order.id, null)
+                                }
+                              >
+                                Limpar ordem
+                              </Button>
                               <Button
                                 disabled={!deliveryWhatsAppUrl}
                                 type="button"
@@ -544,6 +721,47 @@ export default function AgendaPage() {
                       </div>
                     );
                   })}
+
+                  {completedDeliveryOrders.length > 0 ? (
+                    <div className="space-y-3 pt-3">
+                      <div>
+                        <h3 className="text-sm font-semibold uppercase tracking-[0.16em] text-text-muted">
+                          Entregas concluidas
+                        </h3>
+                      </div>
+
+                      {completedDeliveryOrders.map((order) => (
+                        <div
+                          key={order.id}
+                          className="rounded-[var(--radius-control)] border border-border-soft bg-background/15 p-4 opacity-80"
+                        >
+                          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                            <div className="space-y-2">
+                              <div className="flex flex-wrap items-center gap-2">
+                                <p className="text-sm font-semibold text-foreground">
+                                  {order.customer.name}
+                                </p>
+                                <StatusBadge status={order.status} />
+                              </div>
+                              <p className="text-sm text-text-muted">
+                                Endereco: {formatOrderAddress(order) ?? "Nao informado"}
+                              </p>
+                              <p className="text-sm text-text-muted">
+                                Resumo: {summarizeItems(order.items)}
+                              </p>
+                            </div>
+
+                            <Link
+                              className="inline-flex items-center justify-center rounded-[var(--radius-control)] border border-border-strong bg-surface px-4 py-3 text-sm font-semibold text-foreground transition hover:bg-background/40"
+                              href={`/admin/pedidos/${order.id}`}
+                            >
+                              Abrir detalhe
+                            </Link>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : null}
                 </div>
               )}
             </Card>

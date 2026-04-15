@@ -16,6 +16,7 @@ type PedidoComRelacoes = {
   id: string;
   status: string;
   deliveryMethod: "DELIVERY" | "PICKUP";
+  deliveryOrder?: number | null;
   totalPrice: DecimalLike;
   desiredDate?: string | null;
   zipCode?: string | null;
@@ -63,6 +64,7 @@ type PedidoHistoricoCliente = {
 const editableOrderFields = [
   "status",
   "deliveryMethod",
+  "deliveryOrder",
   "desiredDate",
   "zipCode",
   "street",
@@ -79,6 +81,7 @@ const patchOrderSchema = z.object({
     .enum(["CREATED", "READY", "OUT_FOR_DELIVERY", "DELIVERED", "CANCELLED"])
     .optional(),
   deliveryMethod: z.enum(["DELIVERY", "PICKUP"]).optional(),
+  deliveryOrder: z.number().int().positive().nullable().optional(),
   desiredDate: z
     .string()
     .trim()
@@ -123,6 +126,7 @@ function formatPedido(pedido: PedidoComRelacoes) {
     id: pedido.id,
     status: mapDbStatusToApi(pedido.status),
     deliveryMethod: pedido.deliveryMethod,
+    deliveryOrder: pedido.deliveryOrder ?? null,
     totalPrice: pedido.totalPrice.toNumber(),
     desiredDate: pedido.desiredDate ?? null,
     zipCode: pedido.zipCode ?? null,
@@ -274,7 +278,7 @@ export async function PATCH(
       );
     }
 
-    const updateData: Record<string, string | null> = {};
+    const updateData: Record<string, string | number | null> = {};
 
     if (Object.prototype.hasOwnProperty.call(body, "status")) {
       updateData.status = mapApiStatusToDb(
@@ -284,6 +288,10 @@ export async function PATCH(
 
     if (Object.prototype.hasOwnProperty.call(body, "deliveryMethod")) {
       updateData.deliveryMethod = parsedBody.data.deliveryMethod ?? "DELIVERY";
+    }
+
+    if (Object.prototype.hasOwnProperty.call(body, "deliveryOrder")) {
+      updateData.deliveryOrder = parsedBody.data.deliveryOrder ?? null;
     }
 
     if (Object.prototype.hasOwnProperty.call(body, "desiredDate")) {
@@ -329,6 +337,7 @@ export async function PATCH(
       pedidoExistente.deliveryMethod;
 
     if (nextDeliveryMethod === "PICKUP") {
+      updateData.deliveryOrder = null;
       updateData.zipCode = null;
       updateData.street = null;
       updateData.neighborhood = null;
