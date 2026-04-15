@@ -43,6 +43,39 @@ type ViaCepResponse = { cep?: string; logradouro?: string; bairro?: string; loca
 const successFeedbackMessage = "Pedido enviado com sucesso!\n\nJa vamos preparar tudo e te chamar com as proximas atualizacoes.";
 const publicWhatsAppMessage = "Ola! Gostaria de saber mais sobre os dadinhos.";
 
+function safeBuildPixPayload(order: OrderResponse | null) {
+  if (!hasPixKeyConfigured()) {
+    return "";
+  }
+
+  try {
+    if (order) {
+      return buildPixPayload({
+        pixKey: pixConfig.key,
+        amount: order.totalPrice,
+        description: `Pedido ${order.id}`,
+        txid: order.id.replace(/-/g, "").slice(0, 25),
+      });
+    }
+
+    return buildPixPayload({
+      pixKey: pixConfig.key,
+      description: "Dadinhos da Giu",
+      txid: "DADINHOSGIU",
+    });
+  } catch {
+    try {
+      return buildPixPayload({
+        pixKey: pixConfig.key,
+        description: "Dadinhos da Giu",
+        txid: "DADINHOSGIU",
+      });
+    } catch {
+      return "";
+    }
+  }
+}
+
 function formatPrice(price: number) {
   return new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(price);
 }
@@ -152,16 +185,7 @@ export function PublicOrderPage() {
     return buildPublicWhatsAppUrl(`Ola! Acabei de fazer o pedido ${successOrder.id} no valor de ${formatPrice(successOrder.totalPrice)}. ${contextMessage}`);
   }, [successOrder]);
   const pixPayload = useMemo(() => {
-    if (!successOrder || !hasPixKeyConfigured()) {
-      return "";
-    }
-
-    return buildPixPayload({
-      pixKey: pixConfig.key,
-      amount: successOrder.totalPrice,
-      description: `Pedido ${successOrder.id}`,
-      txid: successOrder.id.replace(/-/g, "").slice(0, 25),
-    });
+    return safeBuildPixPayload(successOrder);
   }, [successOrder]);
 
   function updateField<Field extends keyof ReturnType<typeof createInitialFormState>>(field: Field, value: ReturnType<typeof createInitialFormState>[Field]) {
@@ -274,6 +298,20 @@ export function PublicOrderPage() {
     }
   }
 
+  async function handleCopyPixPayload() {
+    if (!pixPayload) {
+      setPixCopyFeedback("Codigo PIX indisponivel no momento.");
+      return;
+    }
+
+    try {
+      await navigator.clipboard.writeText(pixPayload);
+      setPixCopyFeedback("Codigo PIX copiado com sucesso.");
+    } catch {
+      setPixCopyFeedback("Nao foi possivel copiar o codigo PIX.");
+    }
+  }
+
   if (successMessage) {
     return (
       <main className="min-h-screen bg-background">
@@ -326,11 +364,31 @@ export function PublicOrderPage() {
                     : "Chave PIX ainda nao configurada."}
                 </p>
               </div>
+              {pixPayload ? (
+                <div className="mt-4 rounded-[var(--radius-control)] border border-border-soft bg-background/25 p-4">
+                  <p className="text-xs font-semibold uppercase tracking-[0.16em] text-text-muted">
+                    Codigo PIX
+                  </p>
+                  <p className="mt-2 break-all text-sm text-text-muted">
+                    {pixPayload}
+                  </p>
+                </div>
+              ) : null}
               <div className="mt-4 grid gap-3 sm:grid-cols-2">
                 <Button disabled={!hasPixKeyConfigured()} type="button" variant="primary" onClick={() => void handleCopyPixKey()}>
                   Copiar chave PIX
                 </Button>
-                <a className="inline-flex min-h-12 items-center justify-center rounded-[var(--radius-control)] border border-border-strong bg-surface px-5 py-3 text-sm font-semibold text-foreground transition hover:bg-surface-muted" href={paymentWhatsAppUrl} rel="noreferrer" target="_blank">
+                <Button
+                  disabled={!pixPayload}
+                  type="button"
+                  variant="secondary"
+                  onClick={() => void handleCopyPixPayload()}
+                >
+                  Copiar codigo PIX
+                </Button>
+              </div>
+              <div className="mt-3">
+                <a className="inline-flex min-h-12 w-full items-center justify-center rounded-[var(--radius-control)] border border-border-strong bg-surface px-5 py-3 text-sm font-semibold text-foreground transition hover:bg-surface-muted" href={paymentWhatsAppUrl} rel="noreferrer" target="_blank">
                   Enviar comprovante no WhatsApp
                 </a>
               </div>
