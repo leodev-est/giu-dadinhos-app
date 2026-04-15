@@ -218,10 +218,22 @@ async function getHistoricoCliente(customerId: string) {
     orderBy: {
       createdAt: "desc",
     },
-    include: {
+    select: {
+      id: true,
+      status: true,
+      totalPrice: true,
+      desiredDate: true,
+      createdAt: true,
       items: {
-        include: {
-          product: true,
+        select: {
+          id: true,
+          quantity: true,
+          product: {
+            select: {
+              id: true,
+              name: true,
+            },
+          },
         },
       },
     },
