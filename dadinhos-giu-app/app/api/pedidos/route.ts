@@ -19,6 +19,13 @@ const createOrderSchema = z.object({
       .trim()
       .min(8, "Telefone invalido.")
       .max(20, "Telefone invalido."),
+    cpfCnpj: z
+      .string()
+      .trim()
+      .refine((value) => {
+        const digits = value.replace(/\D/g, "");
+        return digits.length === 11 || digits.length === 14;
+      }, "CPF ou CNPJ invalido."),
   }),
   items: z
     .array(
@@ -70,6 +77,7 @@ type CustomerRecord = {
   id: string;
   name: string;
   phone: string;
+  cpfCnpj?: string | null;
 };
 
 function buildOrderSelect(includeDeliveryOrder: boolean) {
@@ -101,6 +109,7 @@ function buildOrderSelect(includeDeliveryOrder: boolean) {
         id: true,
         name: true,
         phone: true,
+        cpfCnpj: true,
       },
     },
     items: {
@@ -154,6 +163,7 @@ type CreatedOrder = {
     id: string;
     name: string;
     phone: string;
+    cpfCnpj?: string | null;
   };
   items: Array<{
     id: string;
@@ -261,12 +271,14 @@ export async function POST(request: Request) {
             },
             data: {
               name: parsedBody.data.customer.name,
+              cpfCnpj: parsedBody.data.customer.cpfCnpj.replace(/\D/g, ""),
             },
           })) as CustomerRecord)
         : ((await tx.customer.create({
             data: {
               name: parsedBody.data.customer.name,
               phone: parsedBody.data.customer.phone,
+              cpfCnpj: parsedBody.data.customer.cpfCnpj.replace(/\D/g, ""),
             },
           })) as CustomerRecord);
 
@@ -401,6 +413,7 @@ export async function POST(request: Request) {
           orderId: order.id,
           customerName: order.customer.name,
           customerPhone: order.customer.phone,
+          customerCpfCnpj: order.customer.cpfCnpj ?? "",
           totalPrice: order.totalPrice.toNumber(),
           dueDate: order.desiredDate ?? getTodayDateInSaoPaulo(),
         });
@@ -474,6 +487,7 @@ export async function POST(request: Request) {
           id: order.customer.id,
           name: order.customer.name,
           phone: order.customer.phone,
+          cpfCnpj: order.customer.cpfCnpj ?? null,
         },
         items: order.items.map((item: CreatedOrder["items"][number]) => ({
           id: item.id,
@@ -543,6 +557,7 @@ type ListedOrder = {
     id: string;
     name: string;
     phone: string;
+    cpfCnpj?: string | null;
   };
   items: Array<{
     quantity: number;

@@ -35,6 +35,7 @@ model Customer {
   id        String   @id @default(uuid())
   name      String
   phone     String   @unique
+  cpfCnpj   String?
   createdAt DateTime @default(now())
 
   orders    Order[]

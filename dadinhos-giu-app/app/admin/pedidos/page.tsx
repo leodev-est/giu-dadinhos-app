@@ -52,6 +52,7 @@ type Order = {
     id?: string;
     name: string;
     phone: string;
+    cpfCnpj?: string | null;
   };
   items: Array<{
     id?: string;
@@ -486,6 +487,7 @@ export default function AdminPedidosPage() {
 
                       <div className="grid gap-2 text-sm text-text-muted sm:grid-cols-2">
                         <p>Telefone: {order.customer.phone}</p>
+                        <p>CPF/CNPJ: {order.customer.cpfCnpj ?? "Nao informado"}</p>
                         <p>Total: {formatPrice(order.totalPrice)}</p>
                         <p>Status: {orderStatusConfig[order.status].label}</p>
                         <p>

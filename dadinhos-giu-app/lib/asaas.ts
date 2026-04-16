@@ -102,12 +102,14 @@ async function asaasFetch<T>(path: string, init?: RequestInit) {
 async function createAsaasCustomer(input: {
   name: string;
   phone: string;
+  cpfCnpj: string;
 }) {
   return asaasFetch<AsaasCustomerResponse>("/customers", {
     method: "POST",
     body: JSON.stringify({
       name: input.name,
       mobilePhone: normalizeAsaasPhone(input.phone),
+      cpfCnpj: input.cpfCnpj.replace(/\D/g, ""),
     }),
   });
 }
@@ -156,12 +158,14 @@ export async function createDynamicPixPayment(input: {
   orderId: string;
   customerName: string;
   customerPhone: string;
+  customerCpfCnpj: string;
   totalPrice: number;
   dueDate?: string | null;
 }) {
   const customer = await createAsaasCustomer({
     name: input.customerName,
     phone: input.customerPhone,
+    cpfCnpj: input.customerCpfCnpj,
   });
 
   const payment = await createAsaasPixCharge({

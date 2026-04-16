@@ -40,6 +40,7 @@ type PedidoComRelacoes = {
     id: string;
     name: string;
     phone: string;
+    cpfCnpj?: string | null;
   };
   items: Array<{
     id: string;
@@ -139,6 +140,7 @@ function buildPedidoSelect(includeDeliveryOrder: boolean) {
         id: true,
         name: true,
         phone: true,
+        cpfCnpj: true,
       },
     },
     items: {
@@ -210,6 +212,7 @@ function formatPedido(
       id: pedido.customer.id,
       name: pedido.customer.name,
       phone: pedido.customer.phone,
+      cpfCnpj: pedido.customer.cpfCnpj ?? null,
     },
     items: pedido.items.map((item) => ({
       id: item.id,

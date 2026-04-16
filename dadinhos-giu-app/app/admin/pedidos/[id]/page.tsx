@@ -24,7 +24,7 @@ type OrderDetail = {
   deliveryMethod: DeliveryMethod;
   zipCode?: string | null; street?: string | null; neighborhood?: string | null; city?: string | null;
   state?: string | null; addressNumber?: string | null; addressComplement?: string | null; notes?: string | null;
-  createdAt: string; customer: { id: string; name: string; phone: string };
+  createdAt: string; customer: { id: string; name: string; phone: string; cpfCnpj?: string | null };
   items: Array<{ id: string; quantity: number; price: number; product: { id: string; name: string; price: number } }>;
   customerHistory: Array<{ id: string; status: OrderStatus; totalPrice: number; desiredDate?: string | null; createdAt: string; isCurrentOrder: boolean; items: Array<{ id: string; quantity: number; product: { id: string; name: string } }> }>;
 };
@@ -212,7 +212,7 @@ export default function AdminPedidoDetailPage() {
                   <StatusBadge status={order.status} />
                 </div>
                 <div className="grid gap-3 text-sm text-text-muted sm:grid-cols-2">
-                  <p>ID do pedido: {order.id}</p><p>Data de criacao: {formatDate(order.createdAt)}</p><p>Cliente: {order.customer.name}</p><p>Telefone: {order.customer.phone}</p><p>Status do cliente: {orderStatusConfig[order.status].label}</p><p>Recebimento: {formatDeliveryMethodLabel(order.deliveryMethod)}</p><p>Para quando: {formatOrderDesiredDate(order.desiredDate) ?? "Nao informado"}</p>
+                  <p>ID do pedido: {order.id}</p><p>Data de criacao: {formatDate(order.createdAt)}</p><p>Cliente: {order.customer.name}</p><p>Telefone: {order.customer.phone}</p><p>CPF/CNPJ: {order.customer.cpfCnpj ?? "Nao informado"}</p><p>Status do cliente: {orderStatusConfig[order.status].label}</p><p>Recebimento: {formatDeliveryMethodLabel(order.deliveryMethod)}</p><p>Para quando: {formatOrderDesiredDate(order.desiredDate) ?? "Nao informado"}</p>
                 </div>
                 {order.notes ? <div className="rounded-[var(--radius-control)] border border-border-soft bg-background/25 px-4 py-3"><p className="text-sm font-medium text-foreground">Observacao do pedido</p><p className="mt-2 text-sm leading-6 text-text-muted">{order.notes}</p></div> : null}
                 {!isEditing ? <div className="space-y-2"><label className="block text-sm font-medium text-foreground">Atualizar status</label><Select disabled={isUpdatingStatus} value={order.status} onChange={(event) => void handleStatusChange(event.target.value as OrderStatus)}>{orderStatuses.map((status) => <option key={status} value={status}>{orderStatusConfig[status].label}</option>)}</Select></div> : null}

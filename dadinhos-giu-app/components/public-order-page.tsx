@@ -85,11 +85,34 @@ function formatPrice(price: number) {
   return new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(price);
 }
 
+function formatCpfCnpj(value: string) {
+  const digits = value.replace(/\D/g, "").slice(0, 14);
+
+  if (digits.length <= 11) {
+    return digits
+      .replace(/^(\d{3})(\d)/, "$1.$2")
+      .replace(/^(\d{3})\.(\d{3})(\d)/, "$1.$2.$3")
+      .replace(/\.(\d{3})(\d{1,2})$/, ".$1-$2");
+  }
+
+  return digits
+    .replace(/^(\d{2})(\d)/, "$1.$2")
+    .replace(/^(\d{2})\.(\d{3})(\d)/, "$1.$2.$3")
+    .replace(/\.(\d{3})(\d)/, ".$1/$2")
+    .replace(/(\d{4})(\d{1,2})$/, "$1-$2");
+}
+
+function hasValidCpfCnpj(value: string) {
+  const digits = value.replace(/\D/g, "");
+  return digits.length === 11 || digits.length === 14;
+}
+
 function createInitialFormState() {
   return {
     quantities: {} as ProductQuantityMap,
     customerName: "",
     customerPhone: "",
+    customerCpfCnpj: "",
     deliveryMethod: "DELIVERY" as DeliveryMethod,
     desiredDate: "",
     zipCode: "",
@@ -220,6 +243,7 @@ export function PublicOrderPage() {
 
     const trimmedName = formState.customerName.trim();
     const trimmedPhone = formState.customerPhone.trim();
+    const trimmedCpfCnpj = formState.customerCpfCnpj.trim();
     const trimmedDesiredDate = formState.desiredDate.trim();
     const formattedZipCode = formatZipCode(formState.zipCode);
     const trimmedNotes = formState.orderNotes.trim();
@@ -232,6 +256,7 @@ export function PublicOrderPage() {
 
     if (!trimmedName) return setErrorMessage("Informe seu nome.");
     if (!trimmedPhone) return setErrorMessage("Informe seu telefone.");
+    if (!hasValidCpfCnpj(trimmedCpfCnpj)) return setErrorMessage("Informe um CPF ou CNPJ valido.");
     if (!trimmedDesiredDate) return setErrorMessage("Informe para quando voce quer seu dadinho.");
     if (selectedItems.length === 0) return setErrorMessage("Selecione ao menos um produto.");
 
@@ -252,7 +277,7 @@ export function PublicOrderPage() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          customer: { name: trimmedName, phone: trimmedPhone },
+          customer: { name: trimmedName, phone: trimmedPhone, cpfCnpj: trimmedCpfCnpj },
           deliveryMethod: formState.deliveryMethod,
           desiredDate: trimmedDesiredDate,
           ...(formState.deliveryMethod === "DELIVERY"
@@ -522,6 +547,15 @@ export function PublicOrderPage() {
                 <label className="block space-y-2">
                   <span className="text-sm font-medium text-foreground">Telefone</span>
                   <Input placeholder="11999999999" value={formState.customerPhone} onChange={(event) => updateField("customerPhone", event.target.value)} />
+                </label>
+                <label className="block space-y-2">
+                  <span className="text-sm font-medium text-foreground">CPF ou CNPJ</span>
+                  <Input
+                    inputMode="numeric"
+                    placeholder="000.000.000-00"
+                    value={formState.customerCpfCnpj}
+                    onChange={(event) => updateField("customerCpfCnpj", formatCpfCnpj(event.target.value))}
+                  />
                 </label>
               </div>
 
