@@ -1,6 +1,22 @@
 const ASAAS_SANDBOX_BASE_URL = "https://api-sandbox.asaas.com/v3";
 const ASAAS_PRODUCTION_BASE_URL = "https://api.asaas.com/v3";
 
+export class AsaasRequestError extends Error {
+  status: number;
+  path: string;
+  responseBody: string;
+
+  constructor(input: { status: number; path: string; responseBody: string }) {
+    super(
+      `Asaas error ${input.status} on ${input.path}: ${input.responseBody || "unknown error"}`,
+    );
+    this.name = "AsaasRequestError";
+    this.status = input.status;
+    this.path = input.path;
+    this.responseBody = input.responseBody;
+  }
+}
+
 export type AsaasDynamicPixPayment = {
   provider: "ASAAS";
   kind: "DYNAMIC_PIX";
@@ -73,9 +89,11 @@ async function asaasFetch<T>(path: string, init?: RequestInit) {
   if (!response.ok) {
     const errorBody = await response.text();
 
-    throw new Error(
-      `Asaas error ${response.status}: ${errorBody || "unknown error"}`,
-    );
+    throw new AsaasRequestError({
+      status: response.status,
+      path,
+      responseBody: errorBody || "unknown error",
+    });
   }
 
   return (await response.json()) as T;

@@ -1,4 +1,5 @@
 import {
+  AsaasRequestError,
   createDynamicPixPayment,
   isAsaasPixEnabled,
   type AsaasDynamicPixPayment,
@@ -420,7 +421,20 @@ export async function POST(request: Request) {
           },
         });
       } catch (error) {
-        console.error("Erro ao gerar cobranca Pix dinamica no Asaas:", error);
+        if (error instanceof AsaasRequestError) {
+          console.error("Erro ao gerar cobranca Pix dinamica no Asaas:", {
+            orderId: order.id,
+            status: error.status,
+            path: error.path,
+            responseBody: error.responseBody,
+          });
+        } else {
+          console.error("Erro ao gerar cobranca Pix dinamica no Asaas:", {
+            orderId: order.id,
+            error,
+          });
+        }
+
         paymentWarning =
           "Nao foi possivel gerar a cobranca Pix dinamica agora. Exibindo o Pix manual como fallback.";
       }
