@@ -23,10 +23,12 @@ import { buildPublicWhatsAppUrl } from "@/lib/public-whatsapp";
 
 type Product = { id: string; name: string; price: number; active: boolean; stockQuantity: number; createdAt: string };
 type ProductQuantityMap = Record<string, number>;
+type PaymentMethod = "PIX" | "CASH";
 type OrderResponse = {
   id: string;
   status: string;
   deliveryMethod: DeliveryMethod;
+  paymentMethod: PaymentMethod;
   totalPrice: number;
   desiredDate?: string | null;
   zipCode?: string | null;
@@ -52,6 +54,7 @@ type ApiError = { error?: string };
 type ViaCepResponse = { cep?: string; logradouro?: string; bairro?: string; localidade?: string; uf?: string; erro?: boolean };
 
 const successFeedbackMessage = "Pedido enviado com sucesso!\n\nJa vamos preparar tudo e te chamar com as proximas atualizacoes.";
+const cashSuccessFeedbackMessage = "Pedido realizado com sucesso!\n\nJa vamos preparar tudo e te chamar com as proximas atualizacoes.";
 const publicWhatsAppMessage = "Ola! Gostaria de saber mais sobre os dadinhos.";
 
 function safeBuildPixPayload(order: OrderResponse | null) {
@@ -113,6 +116,7 @@ function createInitialFormState() {
     customerName: "",
     customerPhone: "",
     customerCpfCnpj: "",
+    paymentMethod: "PIX" as PaymentMethod,
     deliveryMethod: "DELIVERY" as DeliveryMethod,
     desiredDate: "",
     zipCode: "",
@@ -213,6 +217,10 @@ export function PublicOrderPage() {
     return buildPublicWhatsAppUrl(`Ola! Acabei de fazer o pedido ${successOrder.id} no valor de ${formatPrice(successOrder.totalPrice)}. ${contextMessage}`);
   }, [successOrder]);
   const pixPayload = useMemo(() => {
+    if (successOrder?.paymentMethod !== "PIX") {
+      return "";
+    }
+
     if (successOrder?.payment?.pixCopyAndPaste) {
       return successOrder.payment.pixCopyAndPaste;
     }
@@ -256,9 +264,11 @@ export function PublicOrderPage() {
 
     if (!trimmedName) return setErrorMessage("Informe seu nome.");
     if (!trimmedPhone) return setErrorMessage("Informe seu telefone.");
-    if (!hasValidCpfCnpj(trimmedCpfCnpj)) return setErrorMessage("Informe um CPF ou CNPJ valido.");
     if (!trimmedDesiredDate) return setErrorMessage("Informe para quando voce quer seu dadinho.");
     if (selectedItems.length === 0) return setErrorMessage("Selecione ao menos um produto.");
+    if (formState.paymentMethod === "PIX" && !hasValidCpfCnpj(trimmedCpfCnpj)) {
+      return setErrorMessage("Informe um CPF ou CNPJ valido.");
+    }
 
     if (formState.deliveryMethod === "DELIVERY") {
       if (!formattedZipCode || formattedZipCode.replace(/\D/g, "").length !== 8) {
@@ -277,7 +287,8 @@ export function PublicOrderPage() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          customer: { name: trimmedName, phone: trimmedPhone, cpfCnpj: trimmedCpfCnpj },
+          customer: { name: trimmedName, phone: trimmedPhone, ...(formState.paymentMethod === "PIX" ? { cpfCnpj: trimmedCpfCnpj } : {}) },
+          paymentMethod: formState.paymentMethod,
           deliveryMethod: formState.deliveryMethod,
           desiredDate: trimmedDesiredDate,
           ...(formState.deliveryMethod === "DELIVERY"
@@ -313,7 +324,11 @@ export function PublicOrderPage() {
       );
       setFormState(createInitialFormState());
       setSuccessOrder(nextOrder);
-      setSuccessMessage(successFeedbackMessage);
+      setSuccessMessage(
+        nextOrder.paymentMethod === "CASH"
+          ? cashSuccessFeedbackMessage
+          : successFeedbackMessage,
+      );
     } catch {
       setErrorMessage("Nao foi possivel enviar o pedido.");
     } finally {
@@ -365,6 +380,7 @@ export function PublicOrderPage() {
               </div>
             ) : null}
 
+            {successOrder?.paymentMethod === "PIX" ? (
             <div className="rounded-[var(--radius-control)] border border-border-strong bg-surface-muted/60 p-5 text-left">
               <div className="space-y-2">
                 <p className="text-lg font-semibold text-foreground">Pagamento via PIX</p>
@@ -456,16 +472,39 @@ export function PublicOrderPage() {
               </div>
               {pixCopyFeedback ? <p className="mt-3 text-sm text-text-muted">{pixCopyFeedback}</p> : null}
             </div>
+            ) : (
+              <div className="rounded-[var(--radius-control)] border border-border-strong bg-surface-muted/60 p-5 text-left">
+                <div className="space-y-2">
+                  <p className="text-lg font-semibold text-foreground">Pagamento em dinheiro</p>
+                  <p className="text-sm text-text-muted">
+                    Seu pedido foi registrado com pagamento em dinheiro.
+                  </p>
+                  <p className="text-sm text-text-muted">
+                    Vamos combinar os detalhes finais da entrega ou retirada com voce.
+                  </p>
+                </div>
+              </div>
+            )}
 
-            <p className="text-sm text-text-muted">Depois de pagar, voce pode voltar para o inicio ou seguir conversando com a Giu pelo WhatsApp.</p>
+            <p className="text-sm text-text-muted">
+              {successOrder?.paymentMethod === "PIX"
+                ? "Depois de pagar, voce pode voltar para o inicio ou seguir conversando com a Giu pelo WhatsApp."
+                : "Agora voce pode voltar para o inicio ou fazer outro pedido."}
+            </p>
 
             <div className="flex flex-col justify-center gap-3 sm:flex-row">
               <Link className="inline-flex min-h-12 items-center justify-center rounded-[var(--radius-control)] border border-border-strong bg-surface px-5 py-3 text-sm font-semibold text-foreground transition hover:bg-surface-muted" href="/">
                 Voltar para o inicio
               </Link>
-              <a className="inline-flex min-h-12 items-center justify-center rounded-[var(--radius-control)] border border-border-strong bg-background/25 px-5 py-3 text-sm font-semibold text-foreground transition hover:bg-surface-muted" href={paymentWhatsAppUrl} rel="noreferrer" target="_blank">
-                Falar no WhatsApp
-              </a>
+              {successOrder?.paymentMethod === "PIX" ? (
+                <a className="inline-flex min-h-12 items-center justify-center rounded-[var(--radius-control)] border border-border-strong bg-background/25 px-5 py-3 text-sm font-semibold text-foreground transition hover:bg-surface-muted" href={paymentWhatsAppUrl} rel="noreferrer" target="_blank">
+                  Falar no WhatsApp
+                </a>
+              ) : (
+                <Link className="inline-flex min-h-12 items-center justify-center rounded-[var(--radius-control)] border border-border-strong bg-background/25 px-5 py-3 text-sm font-semibold text-foreground transition hover:bg-surface-muted" href="/pedido">
+                  Fazer outro pedido
+                </Link>
+              )}
             </div>
           </Card>
         </PageContainer>
@@ -548,15 +587,50 @@ export function PublicOrderPage() {
                   <span className="text-sm font-medium text-foreground">Telefone</span>
                   <Input placeholder="11999999999" value={formState.customerPhone} onChange={(event) => updateField("customerPhone", event.target.value)} />
                 </label>
+              </div>
+
+              <div className="space-y-4 rounded-[var(--radius-control)] border border-border-soft bg-background/20 p-4">
+                <div>
+                  <p className="text-sm font-semibold text-foreground">Pagamento</p>
+                  <p className="mt-1 text-sm text-text-muted">
+                    Escolha se quer pagar com PIX agora ou em dinheiro no atendimento.
+                  </p>
+                </div>
                 <label className="block space-y-2">
-                  <span className="text-sm font-medium text-foreground">CPF ou CNPJ</span>
-                  <Input
-                    inputMode="numeric"
-                    placeholder="000.000.000-00"
-                    value={formState.customerCpfCnpj}
-                    onChange={(event) => updateField("customerCpfCnpj", formatCpfCnpj(event.target.value))}
-                  />
+                  <span className="text-sm font-medium text-foreground">Como voce quer pagar?</span>
+                  <Select
+                    value={formState.paymentMethod}
+                    onChange={(event) => updateField("paymentMethod", event.target.value as PaymentMethod)}
+                  >
+                    <option value="PIX">PIX</option>
+                    <option value="CASH">Dinheiro</option>
+                  </Select>
                 </label>
+                {formState.paymentMethod === "PIX" ? (
+                  <label className="block space-y-2">
+                    <span className="text-sm font-medium text-foreground">CPF ou CNPJ</span>
+                    <Input
+                      inputMode="numeric"
+                      maxLength={18}
+                      pattern="[0-9]*"
+                      placeholder="000.000.000-00"
+                      value={formState.customerCpfCnpj}
+                      onChange={(event) =>
+                        updateField(
+                          "customerCpfCnpj",
+                          formatCpfCnpj(event.target.value.replace(/\D/g, "")),
+                        )
+                      }
+                    />
+                  </label>
+                ) : (
+                  <div className="rounded-[var(--radius-control)] border border-border-strong bg-background/25 p-4">
+                    <p className="text-sm font-semibold text-foreground">Pagamento em dinheiro</p>
+                    <p className="mt-2 text-sm text-text-muted">
+                      O pedido sera registrado direto, sem etapa de PIX.
+                    </p>
+                  </div>
+                )}
               </div>
 
               <div className="space-y-4 rounded-[var(--radius-control)] border border-border-soft bg-background/20 p-4">

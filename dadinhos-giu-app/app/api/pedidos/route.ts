@@ -19,13 +19,7 @@ const createOrderSchema = z.object({
       .trim()
       .min(8, "Telefone invalido.")
       .max(20, "Telefone invalido."),
-    cpfCnpj: z
-      .string()
-      .trim()
-      .refine((value) => {
-        const digits = value.replace(/\D/g, "");
-        return digits.length === 11 || digits.length === 14;
-      }, "CPF ou CNPJ invalido."),
+    cpfCnpj: z.string().trim().optional(),
   }),
   items: z
     .array(
@@ -39,6 +33,7 @@ const createOrderSchema = z.object({
     )
     .min(1, "O pedido deve ter ao menos um item."),
   deliveryMethod: z.enum(["DELIVERY", "PICKUP"]),
+  paymentMethod: z.enum(["PIX", "CASH"]),
   desiredDate: z
     .string()
     .trim()
@@ -86,6 +81,7 @@ function buildOrderSelect(includeDeliveryOrder: boolean) {
     status: true,
     deliveryMethod: true,
     ...(includeDeliveryOrder ? { deliveryOrder: true } : {}),
+    paymentMethod: true,
     paymentProvider: true,
     paymentStatus: true,
     paymentExternalId: true,
@@ -141,6 +137,7 @@ type CreatedOrder = {
   status: string;
   deliveryMethod: "DELIVERY" | "PICKUP";
   deliveryOrder?: number | null;
+  paymentMethod: "PIX" | "CASH";
   paymentProvider: "MANUAL_PIX" | "ASAAS";
   paymentStatus: "PENDING" | "CONFIRMED" | "FAILED" | "EXPIRED";
   paymentExternalId?: string | null;
@@ -245,6 +242,22 @@ export async function POST(request: Request) {
       );
     }
 
+    const normalizedCpfCnpj =
+      parsedBody.data.customer.cpfCnpj?.replace(/\D/g, "") ?? "";
+
+    if (
+      parsedBody.data.paymentMethod === "PIX" &&
+      normalizedCpfCnpj.length !== 11 &&
+      normalizedCpfCnpj.length !== 14
+    ) {
+      return Response.json(
+        {
+          error: "Informe um CPF ou CNPJ valido para pagar com PIX.",
+        },
+        { status: 400 },
+      );
+    }
+
     const normalizedItems = normalizeItems(parsedBody.data.items);
     const productIds = normalizedItems.map((item) => item.productId);
 
@@ -271,14 +284,14 @@ export async function POST(request: Request) {
             },
             data: {
               name: parsedBody.data.customer.name,
-              cpfCnpj: parsedBody.data.customer.cpfCnpj.replace(/\D/g, ""),
+              cpfCnpj: normalizedCpfCnpj || null,
             },
           })) as CustomerRecord)
         : ((await tx.customer.create({
             data: {
               name: parsedBody.data.customer.name,
               phone: parsedBody.data.customer.phone,
-              cpfCnpj: parsedBody.data.customer.cpfCnpj.replace(/\D/g, ""),
+              ...(normalizedCpfCnpj ? { cpfCnpj: normalizedCpfCnpj } : {}),
             },
           })) as CustomerRecord);
 
@@ -355,6 +368,7 @@ export async function POST(request: Request) {
           customerId: customer.id,
           status: mapApiStatusToDb("CREATED"),
           deliveryMethod: parsedBody.data.deliveryMethod,
+          paymentMethod: parsedBody.data.paymentMethod,
           paymentProvider: "MANUAL_PIX",
           paymentStatus: "PENDING",
           totalPrice: totalPrice.toFixed(2),
@@ -407,7 +421,7 @@ export async function POST(request: Request) {
     let payment: AsaasDynamicPixPayment | null = null;
     let paymentWarning: string | null = null;
 
-    if (isAsaasPixEnabled()) {
+    if (parsedBody.data.paymentMethod === "PIX" && isAsaasPixEnabled()) {
       try {
         payment = await createDynamicPixPayment({
           orderId: order.id,
@@ -459,6 +473,7 @@ export async function POST(request: Request) {
         status: mapDbStatusToApi(order.status),
         deliveryMethod: order.deliveryMethod,
         deliveryOrder: getDeliveryOrderValue(order, includeDeliveryOrder),
+        paymentMethod: order.paymentMethod,
         payment: {
           provider: payment?.provider ?? order.paymentProvider,
           status: payment ? "PENDING" : order.paymentStatus,
@@ -535,6 +550,7 @@ type ListedOrder = {
   status: string;
   deliveryMethod: "DELIVERY" | "PICKUP";
   deliveryOrder?: number | null;
+  paymentMethod: "PIX" | "CASH";
   paymentProvider: "MANUAL_PIX" | "ASAAS";
   paymentStatus: "PENDING" | "CONFIRMED" | "FAILED" | "EXPIRED";
   paymentExternalId?: string | null;
@@ -597,6 +613,7 @@ export async function GET() {
         status: mapDbStatusToApi(order.status),
         deliveryMethod: order.deliveryMethod,
         deliveryOrder: getDeliveryOrderValue(order, includeDeliveryOrder),
+        paymentMethod: order.paymentMethod,
         payment: {
           provider: order.paymentProvider,
           status: order.paymentStatus,

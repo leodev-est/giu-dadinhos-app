@@ -18,6 +18,7 @@ type PedidoComRelacoes = {
   status: string;
   deliveryMethod: "DELIVERY" | "PICKUP";
   deliveryOrder?: number | null;
+  paymentMethod: "PIX" | "CASH";
   paymentProvider: "MANUAL_PIX" | "ASAAS";
   paymentStatus: "PENDING" | "CONFIRMED" | "FAILED" | "EXPIRED";
   paymentExternalId?: string | null;
@@ -117,6 +118,7 @@ function buildPedidoSelect(includeDeliveryOrder: boolean) {
     status: true,
     deliveryMethod: true,
     ...(includeDeliveryOrder ? { deliveryOrder: true } : {}),
+    paymentMethod: true,
     paymentProvider: true,
     paymentStatus: true,
     paymentExternalId: true,
@@ -188,6 +190,7 @@ function formatPedido(
     status: mapDbStatusToApi(pedido.status),
     deliveryMethod: pedido.deliveryMethod,
     deliveryOrder: includeDeliveryOrder ? (pedido.deliveryOrder ?? null) : null,
+    paymentMethod: pedido.paymentMethod,
     payment: {
       provider: pedido.paymentProvider,
       status: pedido.paymentStatus,

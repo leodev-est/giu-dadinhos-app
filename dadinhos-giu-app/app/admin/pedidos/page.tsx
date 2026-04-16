@@ -30,6 +30,7 @@ type Order = {
   id: string;
   status: OrderStatus;
   deliveryMethod: DeliveryMethod;
+  paymentMethod?: "PIX" | "CASH";
   payment?: {
     provider: "MANUAL_PIX" | "ASAAS";
     status: PaymentStatus;
@@ -492,9 +493,11 @@ export default function AdminPedidosPage() {
                         <p>Status: {orderStatusConfig[order.status].label}</p>
                         <p>
                           Pagamento:{" "}
-                          {order.payment
-                            ? paymentStatusConfig[order.payment.status].label
-                            : "Nao informado"}
+                          {order.paymentMethod === "CASH"
+                            ? "Dinheiro"
+                            : order.payment
+                              ? paymentStatusConfig[order.payment.status].label
+                              : "Nao informado"}
                         </p>
                         <p>Recebimento: {formatDeliveryMethodLabel(order.deliveryMethod)}</p>
                         <p>Pedido: {order.id}</p>

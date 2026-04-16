@@ -24,6 +24,11 @@ enum PaymentProvider {
   ASAAS
 }
 
+enum PaymentMethod {
+  PIX
+  CASH
+}
+
 enum PaymentStatus {
   PENDING
   CONFIRMED
@@ -58,6 +63,7 @@ model Order {
   status     OrderStatus @default(PENDING)
   deliveryMethod DeliveryMethod @default(DELIVERY)
   deliveryOrder Int?
+  paymentMethod PaymentMethod @default(PIX)
   paymentProvider PaymentProvider @default(MANUAL_PIX)
   paymentStatus PaymentStatus @default(PENDING)
   paymentExternalId String?
