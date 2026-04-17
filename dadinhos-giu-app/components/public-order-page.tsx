@@ -612,7 +612,6 @@ export function PublicOrderPage() {
                     <Input
                       inputMode="numeric"
                       maxLength={18}
-                      pattern="[0-9]*"
                       placeholder="000.000.000-00"
                       value={formState.customerCpfCnpj}
                       onChange={(event) =>
