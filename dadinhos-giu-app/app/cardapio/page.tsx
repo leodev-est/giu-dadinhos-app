@@ -46,7 +46,7 @@ export default function CardapioPage() {
     <main className="min-h-screen bg-background">
       <PageContainer className="space-y-8 py-10">
         <div className="text-center">
-          <PageTitle>Cardapio</PageTitle>
+          <PageTitle title="Cardapio" />
           <p className="mt-2 text-text-muted">Conhea nossos produtos artesanais feitos com carinho.</p>
         </div>
 

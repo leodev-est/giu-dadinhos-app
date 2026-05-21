@@ -121,7 +121,7 @@ export default function AdminCuponsPage() {
     <main className="min-h-screen bg-background">
       <PageContainer className="space-y-6 py-10">
         <div className="flex items-center justify-between">
-          <PageTitle>Cupons</PageTitle>
+          <PageTitle title="Cupons" />
           <Button variant="primary" onClick={() => setShowForm((s) => !s)}>
             {showForm ? "Cancelar" : "Novo cupom"}
           </Button>

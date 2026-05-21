@@ -84,7 +84,7 @@ export default function AdminConfiguracoesPage() {
   return (
     <main className="min-h-screen bg-background">
       <PageContainer className="space-y-6 py-10">
-        <PageTitle>Configuracoes</PageTitle>
+        <PageTitle title="Configuracoes" />
 
         {isLoading ? (
           <p className="text-center text-text-muted">Carregando...</p>

@@ -56,7 +56,7 @@ export default function AdminRelatoriosPage() {
   return (
     <main className="min-h-screen bg-background">
       <PageContainer className="space-y-6 py-10">
-        <PageTitle>Relatorios</PageTitle>
+        <PageTitle title="Relatorios" />
 
         {/* Date filter */}
         <Card className="flex flex-col gap-4 p-5 sm:flex-row sm:items-end">

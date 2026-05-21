@@ -76,7 +76,7 @@ export default function AdminClientesPage() {
     <main className="min-h-screen bg-background">
       <PageContainer className="space-y-6 py-10">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-          <PageTitle>Clientes</PageTitle>
+          <PageTitle title="Clientes" />
           <div className="w-full sm:max-w-xs">
             <Input
               placeholder="Buscar por nome ou telefone..."

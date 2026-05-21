@@ -102,7 +102,7 @@ export default function PublicOrderTrackingPage() {
     <main className="min-h-screen bg-background">
       <PageContainer className="space-y-6 py-10">
         <div>
-          <PageTitle>Acompanhar pedido</PageTitle>
+          <PageTitle title="Acompanhar pedido" />
           <p className="mt-1 text-sm text-text-muted">Pedido #{order.id.slice(0, 8).toUpperCase()}</p>
         </div>
 
