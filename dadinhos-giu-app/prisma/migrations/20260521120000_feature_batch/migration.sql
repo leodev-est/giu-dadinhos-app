@@ -48,9 +48,21 @@ CREATE TABLE IF NOT EXISTS "LoyaltyCard" (
 );
 CREATE UNIQUE INDEX IF NOT EXISTS "LoyaltyCard_customerId_key" ON "LoyaltyCard"("customerId");
 
--- Foreign keys
-ALTER TABLE "Order" ADD CONSTRAINT IF NOT EXISTS "Order_couponId_fkey"
-  FOREIGN KEY ("couponId") REFERENCES "Coupon"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+-- Foreign keys (PostgreSQL nao suporta ADD CONSTRAINT IF NOT EXISTS, usa DO block)
+DO $$ BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint WHERE conname = 'Order_couponId_fkey'
+  ) THEN
+    ALTER TABLE "Order" ADD CONSTRAINT "Order_couponId_fkey"
+      FOREIGN KEY ("couponId") REFERENCES "Coupon"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+  END IF;
+END $$;
 
-ALTER TABLE "LoyaltyCard" ADD CONSTRAINT IF NOT EXISTS "LoyaltyCard_customerId_fkey"
-  FOREIGN KEY ("customerId") REFERENCES "Customer"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+DO $$ BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint WHERE conname = 'LoyaltyCard_customerId_fkey'
+  ) THEN
+    ALTER TABLE "LoyaltyCard" ADD CONSTRAINT "LoyaltyCard_customerId_fkey"
+      FOREIGN KEY ("customerId") REFERENCES "Customer"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+  END IF;
+END $$;
