@@ -1,0 +1,2 @@
+ALTER TABLE "Product" ADD COLUMN "bulkMinQty" INTEGER;
+ALTER TABLE "Product" ADD COLUMN "bulkPrice" DECIMAL(10, 2);

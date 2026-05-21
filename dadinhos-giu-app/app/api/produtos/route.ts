@@ -12,6 +12,17 @@ const createProductSchema = z.object({
     .min(0, "Estoque nao pode ser negativo.")
     .optional(),
   active: z.boolean().optional(),
+  bulkMinQty: z
+    .number()
+    .int("Quantidade minima deve ser um numero inteiro.")
+    .min(2, "Quantidade minima deve ser ao menos 2.")
+    .nullable()
+    .optional(),
+  bulkPrice: z
+    .number()
+    .positive("Preco promocional deve ser maior que zero.")
+    .nullable()
+    .optional(),
 });
 
 type DecimalLike = {
@@ -24,6 +35,8 @@ type ProdutoRecord = {
   price: DecimalLike;
   active: boolean;
   stockQuantity: number;
+  bulkMinQty: number | null;
+  bulkPrice: DecimalLike | null;
   createdAt: Date;
 };
 
@@ -34,6 +47,8 @@ function formatProduto(produto: ProdutoRecord) {
     price: produto.price.toNumber(),
     active: produto.active,
     stockQuantity: produto.stockQuantity,
+    bulkMinQty: produto.bulkMinQty,
+    bulkPrice: produto.bulkPrice?.toNumber() ?? null,
     createdAt: produto.createdAt,
   };
 }
@@ -62,6 +77,12 @@ export async function POST(request: Request) {
           : {}),
         ...(parsedBody.data.active !== undefined
           ? { active: parsedBody.data.active }
+          : {}),
+        ...(parsedBody.data.bulkMinQty !== undefined
+          ? { bulkMinQty: parsedBody.data.bulkMinQty }
+          : {}),
+        ...(parsedBody.data.bulkPrice !== undefined
+          ? { bulkPrice: parsedBody.data.bulkPrice?.toFixed(2) ?? null }
           : {}),
       },
     })) as ProdutoRecord;

@@ -13,8 +13,8 @@
   --border-strong: rgba(244, 184, 96, 0.36);
   --shadow-soft: 0 18px 40px rgba(22, 12, 7, 0.18);
   --shadow-lift: 0 14px 28px rgba(22, 12, 7, 0.24);
-  --radius-card: 16px;
-  --radius-control: 14px;
+  --radius-card: 8px;
+  --radius-control: 8px;
   --space-page: 24px;
 }
 

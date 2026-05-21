@@ -1,4 +1,4 @@
-const officialPixKey = "7635b4db-ac43-4021-b068-a150d2c80ba9";
+const officialPixKey = process.env.NEXT_PUBLIC_PIX_KEY?.trim() || "11984534601";
 
 export const pixConfig = {
   key: officialPixKey,

@@ -19,11 +19,6 @@ enum DeliveryMethod {
   PICKUP
 }
 
-enum PaymentProvider {
-  MANUAL_PIX
-  ASAAS
-}
-
 enum PaymentMethod {
   PIX
   CASH
@@ -40,19 +35,20 @@ model Customer {
   id        String   @id @default(uuid())
   name      String
   phone     String   @unique
-  cpfCnpj   String?
   createdAt DateTime @default(now())
 
   orders    Order[]
 }
 
 model Product {
-  id        String   @id @default(uuid())
-  name      String
-  price     Decimal  @db.Decimal(10, 2)
-  active    Boolean  @default(true)
-  stockQuantity Int  @default(0)
-  createdAt DateTime @default(now())
+  id            String   @id @default(uuid())
+  name          String
+  price         Decimal  @db.Decimal(10, 2)
+  active        Boolean  @default(true)
+  stockQuantity Int      @default(0)
+  bulkMinQty    Int?
+  bulkPrice     Decimal? @db.Decimal(10, 2)
+  createdAt     DateTime @default(now())
 
   items     OrderItem[]
 }
@@ -64,13 +60,9 @@ model Order {
   deliveryMethod DeliveryMethod @default(DELIVERY)
   deliveryOrder Int?
   paymentMethod PaymentMethod @default(PIX)
-  paymentProvider PaymentProvider @default(MANUAL_PIX)
   paymentStatus PaymentStatus @default(PENDING)
-  paymentExternalId String?
-  paymentQrCode String?
-  paymentQrCodeImage String?
-  paymentExpiresAt DateTime?
   paidAt DateTime?
+  paymentReceiptNote String?
   totalPrice Decimal     @db.Decimal(10, 2)
   desiredDate String?
   zipCode String?
@@ -88,8 +80,7 @@ model Order {
 
   @@index([customerId, createdAt])
   @@index([desiredDate, deliveryMethod, deliveryOrder])
-  @@index([paymentStatus, paymentProvider])
-  @@index([paymentExternalId])
+  @@index([paymentStatus])
 }
 
 model OrderItem {

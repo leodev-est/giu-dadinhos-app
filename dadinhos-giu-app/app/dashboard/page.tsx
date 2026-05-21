@@ -12,11 +12,17 @@ import {
   type DeliveryMethod,
 } from "@/lib/order-formatters";
 import { orderStatusConfig, type OrderStatus } from "@/lib/order-status";
+import { type PaymentStatus } from "@/lib/payment-status";
 
 type DashboardOrder = {
   id: string;
   status: OrderStatus;
   deliveryMethod: DeliveryMethod;
+  paymentMethod?: "PIX" | "CASH";
+  payment?: {
+    status: PaymentStatus;
+    paidAt?: string | null;
+  } | null;
   totalPrice: number | null;
   desiredDate?: string | null;
   createdAt: string;
@@ -125,6 +131,10 @@ function summarizeItems(items: DashboardOrder["items"]) {
 
 function sumOrderTotals(orders: DashboardOrder[]) {
   return orders.reduce((total, order) => total + (order.totalPrice ?? 0), 0);
+}
+
+function isRevenueConfirmed(order: DashboardOrder) {
+  return order.paymentMethod === "CASH" || order.payment?.status === "CONFIRMED";
 }
 
 function buildDailyRevenue(orders: DashboardOrder[]) {
@@ -249,15 +259,26 @@ export default function DashboardPage() {
   const dashboardData = useMemo(() => {
     const today = getDateKeyInSaoPaulo();
     const validOrders = orders.filter((order) => order.status !== "CANCELLED");
-    const todayOrders = validOrders.filter(
+    const confirmedRevenueOrders = validOrders.filter(isRevenueConfirmed);
+    const pendingPaymentOrders = validOrders.filter(
+      (order) => order.paymentMethod === "PIX" && order.payment?.status !== "CONFIRMED",
+    );
+    const cashOrders = validOrders.filter((order) => order.paymentMethod === "CASH");
+    const cancelledOrders = orders.filter((order) => order.status === "CANCELLED");
+    const todayOrders = confirmedRevenueOrders.filter(
       (order) => getOrderDateKey(order.createdAt) === today,
     );
     const totalOrders = validOrders.length;
-    const todayOrdersCount = todayOrders.length;
-    const totalRevenue = sumOrderTotals(validOrders);
+    const todayOrdersCount = validOrders.filter(
+      (order) => getOrderDateKey(order.createdAt) === today,
+    ).length;
+    const totalRevenue = sumOrderTotals(confirmedRevenueOrders);
     const todayRevenue = sumOrderTotals(todayOrders);
-    const dailyRevenue = buildDailyRevenue(validOrders);
-    const weekdayRevenue = buildWeekdayRevenue(validOrders);
+    const pendingPaymentTotal = sumOrderTotals(pendingPaymentOrders);
+    const cashTotal = sumOrderTotals(cashOrders);
+    const cancelledTotal = sumOrderTotals(cancelledOrders);
+    const dailyRevenue = buildDailyRevenue(confirmedRevenueOrders);
+    const weekdayRevenue = buildWeekdayRevenue(confirmedRevenueOrders);
     const bestSalesWeekday = weekdayRevenue[0] ?? null;
     const upcomingOrders = validOrders
       .filter((order) => order.desiredDate && order.desiredDate >= today)
@@ -285,6 +306,12 @@ export default function DashboardPage() {
       todayRevenue,
       totalOrders,
       totalRevenue,
+      pendingPaymentCount: pendingPaymentOrders.length,
+      pendingPaymentTotal,
+      cashCount: cashOrders.length,
+      cashTotal,
+      cancelledCount: cancelledOrders.length,
+      cancelledTotal,
       bestSalesDay: dailyRevenue[0] ?? null,
       bestSalesWeekday,
       upcomingOrders,
@@ -341,7 +368,7 @@ export default function DashboardPage() {
                   {formatPrice(dashboardData.todayRevenue)}
                 </p>
                 <p className="mt-2 text-sm text-text-muted">
-                  Soma dos pedidos validos do dia
+                  Soma dos pagamentos confirmados do dia
                 </p>
               </Card>
 
@@ -352,6 +379,36 @@ export default function DashboardPage() {
                 </p>
                 <p className="mt-2 text-sm text-text-muted">
                   Quantidade total de pedidos validos
+                </p>
+              </Card>
+
+              <Card className="border-border-strong bg-surface-muted p-5">
+                <p className="text-sm text-text-muted">Pix a confirmar</p>
+                <p className="mt-3 text-3xl font-semibold text-foreground">
+                  {dashboardData.pendingPaymentCount}
+                </p>
+                <p className="mt-2 text-sm font-medium text-accent">
+                  {formatPrice(dashboardData.pendingPaymentTotal)}
+                </p>
+              </Card>
+
+              <Card className="border-border-strong bg-surface-muted p-5">
+                <p className="text-sm text-text-muted">Dinheiro</p>
+                <p className="mt-3 text-3xl font-semibold text-foreground">
+                  {dashboardData.cashCount}
+                </p>
+                <p className="mt-2 text-sm font-medium text-accent">
+                  {formatPrice(dashboardData.cashTotal)}
+                </p>
+              </Card>
+
+              <Card className="border-border-strong bg-surface-muted p-5">
+                <p className="text-sm text-text-muted">Cancelado</p>
+                <p className="mt-3 text-3xl font-semibold text-foreground">
+                  {dashboardData.cancelledCount}
+                </p>
+                <p className="mt-2 text-sm font-medium text-text-muted">
+                  {formatPrice(dashboardData.cancelledTotal)}
                 </p>
               </Card>
 
@@ -375,7 +432,7 @@ export default function DashboardPage() {
                   {formatPrice(dashboardData.totalRevenue)}
                 </p>
                 <p className="mt-2 text-sm text-text-muted">
-                  Historico acumulado sem cancelados
+                  Historico acumulado com pagamento confirmado
                 </p>
               </Card>
             </div>

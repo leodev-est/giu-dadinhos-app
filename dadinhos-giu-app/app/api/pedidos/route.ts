@@ -1,12 +1,7 @@
-import {
-  AsaasRequestError,
-  createDynamicPixPayment,
-  isAsaasPixEnabled,
-  type AsaasDynamicPixPayment,
-} from "@/lib/asaas";
 import { prisma } from "@/lib/prisma";
 import { hasOrderDeliveryOrderColumn } from "@/lib/order-delivery-order";
 import { mapApiStatusToDb, mapDbStatusToApi } from "@/lib/order-status";
+import { calculateBulkLineTotal, getEffectiveUnitPrice } from "@/lib/bulk-pricing";
 import { z } from "zod";
 
 export const dynamic = "force-dynamic";
@@ -19,7 +14,6 @@ const createOrderSchema = z.object({
       .trim()
       .min(8, "Telefone invalido.")
       .max(20, "Telefone invalido."),
-    cpfCnpj: z.string().trim().optional(),
   }),
   items: z
     .array(
@@ -66,13 +60,14 @@ type ProductRecord = {
   price: DecimalLike;
   active: boolean;
   stockQuantity: number;
+  bulkMinQty: number | null;
+  bulkPrice: DecimalLike | null;
 };
 
 type CustomerRecord = {
   id: string;
   name: string;
   phone: string;
-  cpfCnpj?: string | null;
 };
 
 function buildOrderSelect(includeDeliveryOrder: boolean) {
@@ -82,13 +77,9 @@ function buildOrderSelect(includeDeliveryOrder: boolean) {
     deliveryMethod: true,
     ...(includeDeliveryOrder ? { deliveryOrder: true } : {}),
     paymentMethod: true,
-    paymentProvider: true,
     paymentStatus: true,
-    paymentExternalId: true,
-    paymentQrCode: true,
-    paymentQrCodeImage: true,
-    paymentExpiresAt: true,
     paidAt: true,
+    paymentReceiptNote: true,
     totalPrice: true,
     desiredDate: true,
     zipCode: true,
@@ -105,7 +96,6 @@ function buildOrderSelect(includeDeliveryOrder: boolean) {
         id: true,
         name: true,
         phone: true,
-        cpfCnpj: true,
       },
     },
     items: {
@@ -138,13 +128,9 @@ type CreatedOrder = {
   deliveryMethod: "DELIVERY" | "PICKUP";
   deliveryOrder?: number | null;
   paymentMethod: "PIX" | "CASH";
-  paymentProvider: "MANUAL_PIX" | "ASAAS";
   paymentStatus: "PENDING" | "CONFIRMED" | "FAILED" | "EXPIRED";
-  paymentExternalId?: string | null;
-  paymentQrCode?: string | null;
-  paymentQrCodeImage?: string | null;
-  paymentExpiresAt?: Date | null;
   paidAt?: Date | null;
+  paymentReceiptNote?: string | null;
   totalPrice: DecimalLike;
   desiredDate?: string | null;
   zipCode?: string | null;
@@ -160,7 +146,6 @@ type CreatedOrder = {
     id: string;
     name: string;
     phone: string;
-    cpfCnpj?: string | null;
   };
   items: Array<{
     id: string;
@@ -173,15 +158,6 @@ type CreatedOrder = {
     };
   }>;
 };
-
-function getTodayDateInSaoPaulo() {
-  return new Intl.DateTimeFormat("en-CA", {
-    timeZone: "America/Sao_Paulo",
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-  }).format(new Date());
-}
 
 class BadRequestError extends Error {
   constructor(message: string) {
@@ -242,22 +218,6 @@ export async function POST(request: Request) {
       );
     }
 
-    const normalizedCpfCnpj =
-      parsedBody.data.customer.cpfCnpj?.replace(/\D/g, "") ?? "";
-
-    if (
-      parsedBody.data.paymentMethod === "PIX" &&
-      normalizedCpfCnpj.length !== 11 &&
-      normalizedCpfCnpj.length !== 14
-    ) {
-      return Response.json(
-        {
-          error: "Informe um CPF ou CNPJ valido para pagar com PIX.",
-        },
-        { status: 400 },
-      );
-    }
-
     const normalizedItems = normalizeItems(parsedBody.data.items);
     const productIds = normalizedItems.map((item) => item.productId);
 
@@ -284,14 +244,12 @@ export async function POST(request: Request) {
             },
             data: {
               name: parsedBody.data.customer.name,
-              cpfCnpj: normalizedCpfCnpj || null,
             },
           })) as CustomerRecord)
         : ((await tx.customer.create({
             data: {
               name: parsedBody.data.customer.name,
               phone: parsedBody.data.customer.phone,
-              ...(normalizedCpfCnpj ? { cpfCnpj: normalizedCpfCnpj } : {}),
             },
           })) as CustomerRecord);
 
@@ -321,13 +279,21 @@ export async function POST(request: Request) {
           );
         }
 
+        const unitPrice = product.price.toNumber();
+        const rule = {
+          bulkMinQty: product.bulkMinQty,
+          bulkPrice: product.bulkPrice?.toNumber() ?? null,
+        };
+        const lineTotal = calculateBulkLineTotal(unitPrice, item.quantity, rule);
+        const effectiveUnitPrice = getEffectiveUnitPrice(unitPrice, item.quantity, rule);
+
         return {
           productId: product.id,
           productName: product.name,
           quantity: item.quantity,
-          price: product.price,
+          effectiveUnitPrice,
           stockQuantity: product.stockQuantity,
-          lineTotal: product.price.toNumber() * item.quantity,
+          lineTotal,
         };
       });
 
@@ -369,7 +335,6 @@ export async function POST(request: Request) {
           status: mapApiStatusToDb("CREATED"),
           deliveryMethod: parsedBody.data.deliveryMethod,
           paymentMethod: parsedBody.data.paymentMethod,
-          paymentProvider: "MANUAL_PIX",
           paymentStatus: "PENDING",
           totalPrice: totalPrice.toFixed(2),
           ...(getOptionalString(parsedBody.data.desiredDate)
@@ -410,62 +375,13 @@ export async function POST(request: Request) {
             create: orderItems.map((item) => ({
               productId: item.productId,
               quantity: item.quantity,
-              price: item.price.toString(),
+              price: item.effectiveUnitPrice.toFixed(2),
             })),
           },
         },
         select: buildOrderSelect(includeDeliveryOrder),
       }) as Promise<CreatedOrder>;
     });
-
-    let payment: AsaasDynamicPixPayment | null = null;
-    let paymentWarning: string | null = null;
-
-    if (parsedBody.data.paymentMethod === "PIX" && isAsaasPixEnabled()) {
-      try {
-        payment = await createDynamicPixPayment({
-          orderId: order.id,
-          customerName: order.customer.name,
-          customerPhone: order.customer.phone,
-          customerCpfCnpj: order.customer.cpfCnpj ?? "",
-          totalPrice: order.totalPrice.toNumber(),
-          dueDate: order.desiredDate ?? getTodayDateInSaoPaulo(),
-        });
-
-        await prisma.order.update({
-          where: {
-            id: order.id,
-          },
-          data: {
-            paymentProvider: "ASAAS",
-            paymentStatus: "PENDING",
-            paymentExternalId: payment.externalId,
-            paymentQrCode: payment.pixCopyAndPaste,
-            paymentQrCodeImage: payment.qrCodeImage,
-            paymentExpiresAt: payment.expiresAt
-              ? new Date(payment.expiresAt)
-              : null,
-          },
-        });
-      } catch (error) {
-        if (error instanceof AsaasRequestError) {
-          console.error("Erro ao gerar cobranca Pix dinamica no Asaas:", {
-            orderId: order.id,
-            status: error.status,
-            path: error.path,
-            responseBody: error.responseBody,
-          });
-        } else {
-          console.error("Erro ao gerar cobranca Pix dinamica no Asaas:", {
-            orderId: order.id,
-            error,
-          });
-        }
-
-        paymentWarning =
-          "Nao foi possivel gerar a cobranca Pix dinamica agora. Exibindo o Pix manual como fallback.";
-      }
-    }
 
     return Response.json(
       {
@@ -475,17 +391,9 @@ export async function POST(request: Request) {
         deliveryOrder: getDeliveryOrderValue(order, includeDeliveryOrder),
         paymentMethod: order.paymentMethod,
         payment: {
-          provider: payment?.provider ?? order.paymentProvider,
-          status: payment ? "PENDING" : order.paymentStatus,
-          externalId: payment?.externalId ?? order.paymentExternalId ?? null,
-          pixCopyAndPaste:
-            payment?.pixCopyAndPaste ?? order.paymentQrCode ?? null,
-          qrCodeImage:
-            payment?.qrCodeImage ?? order.paymentQrCodeImage ?? null,
-          expiresAt:
-            payment?.expiresAt ??
-            (order.paymentExpiresAt ? order.paymentExpiresAt.toISOString() : null),
+          status: order.paymentStatus,
           paidAt: order.paidAt ? order.paidAt.toISOString() : null,
+          receiptNote: order.paymentReceiptNote ?? null,
         },
         totalPrice: order.totalPrice.toNumber(),
         desiredDate: order.desiredDate ?? null,
@@ -502,7 +410,6 @@ export async function POST(request: Request) {
           id: order.customer.id,
           name: order.customer.name,
           phone: order.customer.phone,
-          cpfCnpj: order.customer.cpfCnpj ?? null,
         },
         items: order.items.map((item: CreatedOrder["items"][number]) => ({
           id: item.id,
@@ -511,7 +418,6 @@ export async function POST(request: Request) {
           quantity: item.quantity,
           price: item.price.toNumber(),
         })),
-        paymentWarning,
       },
       { status: 201 },
     );
@@ -551,13 +457,9 @@ type ListedOrder = {
   deliveryMethod: "DELIVERY" | "PICKUP";
   deliveryOrder?: number | null;
   paymentMethod: "PIX" | "CASH";
-  paymentProvider: "MANUAL_PIX" | "ASAAS";
   paymentStatus: "PENDING" | "CONFIRMED" | "FAILED" | "EXPIRED";
-  paymentExternalId?: string | null;
-  paymentQrCode?: string | null;
-  paymentQrCodeImage?: string | null;
-  paymentExpiresAt?: Date | null;
   paidAt?: Date | null;
+  paymentReceiptNote?: string | null;
   totalPrice: DecimalLike;
   desiredDate?: string | null;
   zipCode?: string | null;
@@ -573,7 +475,6 @@ type ListedOrder = {
     id: string;
     name: string;
     phone: string;
-    cpfCnpj?: string | null;
   };
   items: Array<{
     quantity: number;
@@ -615,13 +516,9 @@ export async function GET() {
         deliveryOrder: getDeliveryOrderValue(order, includeDeliveryOrder),
         paymentMethod: order.paymentMethod,
         payment: {
-          provider: order.paymentProvider,
           status: order.paymentStatus,
-          externalId: order.paymentExternalId ?? null,
-          pixCopyAndPaste: order.paymentQrCode ?? null,
-          qrCodeImage: order.paymentQrCodeImage ?? null,
-          expiresAt: order.paymentExpiresAt?.toISOString() ?? null,
           paidAt: order.paidAt?.toISOString() ?? null,
+          receiptNote: order.paymentReceiptNote ?? null,
         },
         totalPrice: order.totalPrice.toNumber(),
         desiredDate: order.desiredDate ?? null,

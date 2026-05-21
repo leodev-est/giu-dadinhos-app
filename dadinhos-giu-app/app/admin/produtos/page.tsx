@@ -14,6 +14,8 @@ type Product = {
   price: number;
   active: boolean;
   stockQuantity: number;
+  bulkMinQty: number | null;
+  bulkPrice: number | null;
   createdAt: string;
 };
 
@@ -26,6 +28,8 @@ type ProductFormState = {
   price: string;
   stockQuantity: string;
   active: boolean;
+  bulkMinQty: string;
+  bulkPrice: string;
 };
 
 const initialFormState: ProductFormState = {
@@ -33,6 +37,8 @@ const initialFormState: ProductFormState = {
   price: "",
   stockQuantity: "0",
   active: true,
+  bulkMinQty: "",
+  bulkPrice: "",
 };
 
 function formatPrice(price: number) {
@@ -74,6 +80,8 @@ export default function AdminProdutosPage() {
             price: product.price.toFixed(2),
             stockQuantity: String(product.stockQuantity),
             active: product.active,
+            bulkMinQty: product.bulkMinQty !== null ? String(product.bulkMinQty) : "",
+            bulkPrice: product.bulkPrice !== null ? product.bulkPrice.toFixed(2) : "",
           },
         ]),
       ),
@@ -106,6 +114,8 @@ export default function AdminProdutosPage() {
     const trimmedName = form.name.trim();
     const parsedPrice = Number(form.price);
     const parsedStockQuantity = Number(form.stockQuantity);
+    const parsedBulkMinQty = form.bulkMinQty.trim() ? Number(form.bulkMinQty) : null;
+    const parsedBulkPrice = form.bulkPrice.trim() ? Number(form.bulkPrice) : null;
 
     if (!trimmedName) {
       setErrorMessage("Informe o nome do produto.");
@@ -122,6 +132,16 @@ export default function AdminProdutosPage() {
       return;
     }
 
+    if (parsedBulkMinQty !== null && (!Number.isInteger(parsedBulkMinQty) || parsedBulkMinQty < 2)) {
+      setErrorMessage("Quantidade minima da promocao deve ser ao menos 2.");
+      return;
+    }
+
+    if (parsedBulkPrice !== null && (!Number.isFinite(parsedBulkPrice) || parsedBulkPrice <= 0)) {
+      setErrorMessage("Preco promocional deve ser maior que zero.");
+      return;
+    }
+
     const response = await fetch("/api/produtos", {
       method: "POST",
       headers: {
@@ -132,6 +152,8 @@ export default function AdminProdutosPage() {
         price: parsedPrice,
         stockQuantity: parsedStockQuantity,
         active: form.active,
+        bulkMinQty: parsedBulkMinQty,
+        bulkPrice: parsedBulkPrice,
       }),
     });
 
@@ -169,6 +191,8 @@ export default function AdminProdutosPage() {
     const trimmedName = editingForm.name.trim();
     const parsedPrice = Number(editingForm.price);
     const parsedStockQuantity = Number(editingForm.stockQuantity);
+    const parsedBulkMinQty = editingForm.bulkMinQty.trim() ? Number(editingForm.bulkMinQty) : null;
+    const parsedBulkPrice = editingForm.bulkPrice.trim() ? Number(editingForm.bulkPrice) : null;
 
     if (!trimmedName) {
       setErrorMessage("Informe o nome do produto.");
@@ -185,6 +209,16 @@ export default function AdminProdutosPage() {
       return;
     }
 
+    if (parsedBulkMinQty !== null && (!Number.isInteger(parsedBulkMinQty) || parsedBulkMinQty < 2)) {
+      setErrorMessage("Quantidade minima da promocao deve ser ao menos 2.");
+      return;
+    }
+
+    if (parsedBulkPrice !== null && (!Number.isFinite(parsedBulkPrice) || parsedBulkPrice <= 0)) {
+      setErrorMessage("Preco promocional deve ser maior que zero.");
+      return;
+    }
+
     setSavingProductId(productId);
 
     try {
@@ -198,6 +232,8 @@ export default function AdminProdutosPage() {
           price: parsedPrice,
           stockQuantity: parsedStockQuantity,
           active: editingForm.active,
+          bulkMinQty: parsedBulkMinQty,
+          bulkPrice: parsedBulkPrice,
         }),
       });
 
@@ -225,6 +261,8 @@ export default function AdminProdutosPage() {
           price: updatedProduct.price.toFixed(2),
           stockQuantity: String(updatedProduct.stockQuantity),
           active: updatedProduct.active,
+          bulkMinQty: updatedProduct.bulkMinQty !== null ? String(updatedProduct.bulkMinQty) : "",
+          bulkPrice: updatedProduct.bulkPrice !== null ? updatedProduct.bulkPrice.toFixed(2) : "",
         },
       }));
       setSuccessMessage("Produto atualizado com sucesso.");
@@ -317,6 +355,47 @@ export default function AdminProdutosPage() {
               </span>
             </label>
 
+            <div className="rounded-[var(--radius-control)] border border-amber-300/20 bg-amber-950/20 p-4 space-y-3">
+              <div>
+                <p className="text-sm font-semibold text-amber-100">Promocao por quantidade</p>
+                <p className="mt-1 text-xs text-amber-200/70">Deixe em branco para nao aplicar promocao.</p>
+              </div>
+              <div className="grid gap-3 sm:grid-cols-2">
+                <label className="block space-y-2">
+                  <span className="text-sm font-medium text-foreground">Qtd. minima</span>
+                  <Input
+                    min="2"
+                    placeholder="Ex.: 3"
+                    step="1"
+                    type="number"
+                    value={form.bulkMinQty}
+                    onChange={(event) =>
+                      setForm((current) => ({
+                        ...current,
+                        bulkMinQty: event.target.value,
+                      }))
+                    }
+                  />
+                </label>
+                <label className="block space-y-2">
+                  <span className="text-sm font-medium text-foreground">Preco promocional</span>
+                  <Input
+                    min="0.01"
+                    placeholder="Ex.: 12.00"
+                    step="0.01"
+                    type="number"
+                    value={form.bulkPrice}
+                    onChange={(event) =>
+                      setForm((current) => ({
+                        ...current,
+                        bulkPrice: event.target.value,
+                      }))
+                    }
+                  />
+                </label>
+              </div>
+            </div>
+
             {errorMessage ? (
               <div className="rounded-[var(--radius-control)] border border-red-300/30 bg-red-950/40 px-4 py-3 text-sm text-red-100">
                 {errorMessage}
@@ -386,6 +465,18 @@ export default function AdminProdutosPage() {
                       {product.stockQuantity}
                     </p>
                   </div>
+
+                  {product.bulkMinQty !== null && product.bulkPrice !== null ? (
+                    <div className="mt-2 rounded-[var(--radius-control)] border border-amber-300/30 bg-amber-950/30 px-4 py-3">
+                      <p className="text-xs font-semibold uppercase tracking-[0.12em] text-amber-300">
+                        Promocao ativa
+                      </p>
+                      <p className="mt-1 text-sm text-amber-100">
+                        {product.bulkMinQty}x por{" "}
+                        {new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(product.bulkPrice)}
+                      </p>
+                    </div>
+                  ) : null}
 
                   <div className="mt-4 space-y-3">
                     <label className="block space-y-2">
@@ -478,6 +569,8 @@ export default function AdminProdutosPage() {
                                 price: product.price.toFixed(2),
                                 stockQuantity: String(product.stockQuantity),
                                 active: product.active,
+                                bulkMinQty: product.bulkMinQty !== null ? String(product.bulkMinQty) : "",
+                                bulkPrice: product.bulkPrice !== null ? product.bulkPrice.toFixed(2) : "",
                               }),
                               active: event.target.checked,
                             },
@@ -488,6 +581,65 @@ export default function AdminProdutosPage() {
                         Produto ativo
                       </span>
                     </label>
+
+                    <div className="rounded-[var(--radius-control)] border border-amber-300/20 bg-amber-950/20 p-3 space-y-3">
+                      <p className="text-xs font-semibold text-amber-100">Promocao por quantidade</p>
+                      <div className="grid gap-3 sm:grid-cols-2">
+                        <label className="block space-y-2">
+                          <span className="text-xs font-medium text-foreground">Qtd. minima</span>
+                          <Input
+                            min="2"
+                            placeholder="Ex.: 3"
+                            step="1"
+                            type="number"
+                            value={editingForms[product.id]?.bulkMinQty ?? ""}
+                            onChange={(event) =>
+                              setEditingForms((current) => ({
+                                ...current,
+                                [product.id]: {
+                                  ...(current[product.id] ?? {
+                                    name: product.name,
+                                    price: product.price.toFixed(2),
+                                    stockQuantity: String(product.stockQuantity),
+                                    active: product.active,
+                                    bulkMinQty: product.bulkMinQty !== null ? String(product.bulkMinQty) : "",
+                                    bulkPrice: product.bulkPrice !== null ? product.bulkPrice.toFixed(2) : "",
+                                  }),
+                                  bulkMinQty: event.target.value,
+                                },
+                              }))
+                            }
+                          />
+                        </label>
+                        <label className="block space-y-2">
+                          <span className="text-xs font-medium text-foreground">Preco promocional</span>
+                          <Input
+                            min="0.01"
+                            placeholder="Ex.: 12.00"
+                            step="0.01"
+                            type="number"
+                            value={editingForms[product.id]?.bulkPrice ?? ""}
+                            onChange={(event) =>
+                              setEditingForms((current) => ({
+                                ...current,
+                                [product.id]: {
+                                  ...(current[product.id] ?? {
+                                    name: product.name,
+                                    price: product.price.toFixed(2),
+                                    stockQuantity: String(product.stockQuantity),
+                                    active: product.active,
+                                    bulkMinQty: product.bulkMinQty !== null ? String(product.bulkMinQty) : "",
+                                    bulkPrice: product.bulkPrice !== null ? product.bulkPrice.toFixed(2) : "",
+                                  }),
+                                  bulkPrice: event.target.value,
+                                },
+                              }))
+                            }
+                          />
+                        </label>
+                      </div>
+                      <p className="text-xs text-amber-200/60">Deixe em branco para remover a promocao.</p>
+                    </div>
 
                     <Button
                       disabled={savingProductId === product.id}

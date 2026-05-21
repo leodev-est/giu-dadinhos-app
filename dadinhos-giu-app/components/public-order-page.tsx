@@ -1,8 +1,8 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { type FormEvent, useEffect, useMemo, useState } from "react";
-import { QRCodeSVG } from "qrcode.react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -18,10 +18,10 @@ import {
 } from "@/lib/order-formatters";
 import { hasPixKeyConfigured, pixConfig } from "@/lib/payment-config";
 import { paymentStatusConfig, type PaymentStatus } from "@/lib/payment-status";
-import { buildPixPayload } from "@/lib/pix";
 import { buildPublicWhatsAppUrl } from "@/lib/public-whatsapp";
+import { calculateBulkLineTotal, hasBulkPromotion } from "@/lib/bulk-pricing";
 
-type Product = { id: string; name: string; price: number; active: boolean; stockQuantity: number; createdAt: string };
+type Product = { id: string; name: string; price: number; active: boolean; stockQuantity: number; bulkMinQty: number | null; bulkPrice: number | null; createdAt: string };
 type ProductQuantityMap = Record<string, number>;
 type PaymentMethod = "PIX" | "CASH";
 type OrderResponse = {
@@ -40,15 +40,10 @@ type OrderResponse = {
   addressComplement?: string | null;
   notes?: string | null;
   payment?: {
-    provider: "MANUAL_PIX" | "ASAAS";
     status: PaymentStatus;
-    externalId?: string | null;
-    pixCopyAndPaste?: string | null;
-    qrCodeImage?: string | null;
-    expiresAt?: string | null;
     paidAt?: string | null;
+    receiptNote?: string | null;
   } | null;
-  paymentWarning?: string | null;
 };
 type ApiError = { error?: string };
 type ViaCepResponse = { cep?: string; logradouro?: string; bairro?: string; localidade?: string; uf?: string; erro?: boolean };
@@ -57,57 +52,8 @@ const successFeedbackMessage = "Pedido enviado com sucesso!\n\nJa vamos preparar
 const cashSuccessFeedbackMessage = "Pedido realizado com sucesso!\n\nJa vamos preparar tudo e te chamar com as proximas atualizacoes.";
 const publicWhatsAppMessage = "Ola! Gostaria de saber mais sobre os dadinhos.";
 
-function safeBuildPixPayload(order: OrderResponse | null) {
-  if (!hasPixKeyConfigured()) {
-    return "";
-  }
-
-  try {
-    if (order) {
-      return buildPixPayload({
-        pixKey: pixConfig.key,
-        amount: order.totalPrice,
-      });
-    }
-
-    return buildPixPayload({
-      pixKey: pixConfig.key,
-    });
-  } catch {
-    try {
-      return buildPixPayload({
-        pixKey: pixConfig.key,
-      });
-    } catch {
-      return "";
-    }
-  }
-}
-
 function formatPrice(price: number) {
   return new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(price);
-}
-
-function formatCpfCnpj(value: string) {
-  const digits = value.replace(/\D/g, "").slice(0, 14);
-
-  if (digits.length <= 11) {
-    return digits
-      .replace(/^(\d{3})(\d)/, "$1.$2")
-      .replace(/^(\d{3})\.(\d{3})(\d)/, "$1.$2.$3")
-      .replace(/\.(\d{3})(\d{1,2})$/, ".$1-$2");
-  }
-
-  return digits
-    .replace(/^(\d{2})(\d)/, "$1.$2")
-    .replace(/^(\d{2})\.(\d{3})(\d)/, "$1.$2.$3")
-    .replace(/\.(\d{3})(\d)/, ".$1/$2")
-    .replace(/(\d{4})(\d{1,2})$/, "$1-$2");
-}
-
-function hasValidCpfCnpj(value: string) {
-  const digits = value.replace(/\D/g, "");
-  return digits.length === 11 || digits.length === 14;
 }
 
 function createInitialFormState() {
@@ -115,7 +61,6 @@ function createInitialFormState() {
     quantities: {} as ProductQuantityMap,
     customerName: "",
     customerPhone: "",
-    customerCpfCnpj: "",
     paymentMethod: "PIX" as PaymentMethod,
     deliveryMethod: "DELIVERY" as DeliveryMethod,
     desiredDate: "",
@@ -203,32 +148,17 @@ export function PublicOrderPage() {
   }, [formState.deliveryMethod, formState.zipCode]);
 
   const selectedItems = useMemo(() => products.map((product) => ({ product, quantity: formState.quantities[product.id] ?? 0 })).filter((item) => item.quantity > 0), [formState.quantities, products]);
-  const visualTotal = useMemo(() => selectedItems.reduce((total, item) => total + item.product.price * item.quantity, 0), [selectedItems]);
-  const pickupWhatsAppUrl = useMemo(() => {
-    const itemsSummary = selectedItems.map((item) => `${item.product.name} x${item.quantity}`).join(", ");
-    const desiredDate = formState.desiredDate ? ` Data desejada: ${formatOrderDesiredDate(formState.desiredDate)}.` : "";
-    return buildPublicWhatsAppUrl(`Ola! Fiz um pedido para retirada.${desiredDate} Pedido: ${itemsSummary}.`);
-  }, [formState.desiredDate, selectedItems]);
+  const visualTotal = useMemo(() => selectedItems.reduce((total, item) => {
+    const rule = { bulkMinQty: item.product.bulkMinQty, bulkPrice: item.product.bulkPrice };
+    return total + calculateBulkLineTotal(item.product.price, item.quantity, rule);
+  }, 0), [selectedItems]);
   const paymentWhatsAppUrl = useMemo(() => {
     if (!successOrder) return buildPublicWhatsAppUrl(publicWhatsAppMessage);
     const contextMessage = successOrder.deliveryMethod === "PICKUP"
-      ? "Quando eu fizer o PIX, envio o comprovante para combinarmos a retirada."
-      : "Quando eu fizer o PIX, envio o comprovante por aqui para seguirmos com a entrega.";
+      ? "Ja fiz o PIX e envio o comprovante por aqui para combinarmos a retirada."
+      : "Ja fiz o PIX e envio o comprovante por aqui para seguirmos com a entrega.";
     return buildPublicWhatsAppUrl(`Ola! Acabei de fazer o pedido ${successOrder.id} no valor de ${formatPrice(successOrder.totalPrice)}. ${contextMessage}`);
   }, [successOrder]);
-  const pixPayload = useMemo(() => {
-    if (successOrder?.paymentMethod !== "PIX") {
-      return "";
-    }
-
-    if (successOrder?.payment?.pixCopyAndPaste) {
-      return successOrder.payment.pixCopyAndPaste;
-    }
-
-    return safeBuildPixPayload(successOrder);
-  }, [successOrder]);
-
-  const asaasQrCodeImage = successOrder?.payment?.qrCodeImage ?? null;
 
   function updateField<Field extends keyof ReturnType<typeof createInitialFormState>>(field: Field, value: ReturnType<typeof createInitialFormState>[Field]) {
     setFormState((current) => ({ ...current, [field]: value }));
@@ -251,7 +181,6 @@ export function PublicOrderPage() {
 
     const trimmedName = formState.customerName.trim();
     const trimmedPhone = formState.customerPhone.trim();
-    const trimmedCpfCnpj = formState.customerCpfCnpj.trim();
     const trimmedDesiredDate = formState.desiredDate.trim();
     const formattedZipCode = formatZipCode(formState.zipCode);
     const trimmedNotes = formState.orderNotes.trim();
@@ -266,9 +195,6 @@ export function PublicOrderPage() {
     if (!trimmedPhone) return setErrorMessage("Informe seu telefone.");
     if (!trimmedDesiredDate) return setErrorMessage("Informe para quando voce quer seu dadinho.");
     if (selectedItems.length === 0) return setErrorMessage("Selecione ao menos um produto.");
-    if (formState.paymentMethod === "PIX" && !hasValidCpfCnpj(trimmedCpfCnpj)) {
-      return setErrorMessage("Informe um CPF ou CNPJ valido.");
-    }
 
     if (formState.deliveryMethod === "DELIVERY") {
       if (!formattedZipCode || formattedZipCode.replace(/\D/g, "").length !== 8) {
@@ -287,7 +213,7 @@ export function PublicOrderPage() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          customer: { name: trimmedName, phone: trimmedPhone, ...(formState.paymentMethod === "PIX" ? { cpfCnpj: trimmedCpfCnpj } : {}) },
+          customer: { name: trimmedName, phone: trimmedPhone },
           paymentMethod: formState.paymentMethod,
           deliveryMethod: formState.deliveryMethod,
           desiredDate: trimmedDesiredDate,
@@ -349,20 +275,6 @@ export function PublicOrderPage() {
     }
   }
 
-  async function handleCopyPixPayload() {
-    if (!pixPayload) {
-      setPixCopyFeedback("Codigo PIX indisponivel no momento.");
-      return;
-    }
-
-    try {
-      await navigator.clipboard.writeText(pixPayload);
-      setPixCopyFeedback("Codigo PIX copiado com sucesso.");
-    } catch {
-      setPixCopyFeedback("Nao foi possivel copiar o codigo PIX.");
-    }
-  }
-
   if (successMessage) {
     return (
       <main className="min-h-screen bg-background">
@@ -384,50 +296,12 @@ export function PublicOrderPage() {
             <div className="rounded-[var(--radius-control)] border border-border-strong bg-surface-muted/60 p-5 text-left">
               <div className="space-y-2">
                 <p className="text-lg font-semibold text-foreground">Pagamento via PIX</p>
-                <p className="text-sm text-text-muted">Voce pode pagar escaneando o QR Code ou copiando a chave PIX.</p>
-                <p className="text-sm text-text-muted">Se preferir, voce ja pode realizar o pagamento via PIX e nos enviar o comprovante pelo WhatsApp.</p>
+                <p className="text-sm text-text-muted">Use a chave PIX da Giu abaixo para fazer o pagamento.</p>
+                <p className="text-sm text-text-muted">Depois de pagar, envie o comprovante pelo WhatsApp para confirmarmos o pedido.</p>
                 {successOrder?.deliveryMethod === "PICKUP" ? (
                   <p className="text-sm text-text-muted">Para retirada, o horario pode ser combinado com a Giu pelo WhatsApp depois do pagamento.</p>
                 ) : null}
               </div>
-              <div className="mt-4 flex justify-center">
-                <div className="rounded-[var(--radius-control)] border border-border-soft bg-white p-4 shadow-soft">
-                  {asaasQrCodeImage ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img
-                      alt="QR Code PIX"
-                      className="h-48 w-48 object-contain"
-                      height={192}
-                      src={asaasQrCodeImage}
-                      width={192}
-                    />
-                  ) : pixPayload ? (
-                    <QRCodeSVG
-                      bgColor="#ffffff"
-                      fgColor="#2b1a12"
-                      includeMargin
-                      level="M"
-                      size={192}
-                      value={pixPayload}
-                    />
-                  ) : (
-                    <div className="flex h-48 w-48 items-center justify-center text-center text-sm text-[#2b1a12]">
-                      QR Code PIX indisponivel no momento.
-                    </div>
-                  )}
-                </div>
-              </div>
-              {successOrder?.paymentWarning ? (
-                <p className="mt-4 text-sm text-text-muted">
-                  {successOrder.paymentWarning}
-                </p>
-              ) : null}
-              {successOrder?.payment?.expiresAt ? (
-                <p className="mt-2 text-sm text-text-muted">
-                  Cobranca dinamica valida ate{" "}
-                  {new Date(successOrder.payment.expiresAt).toLocaleString("pt-BR")}.
-                </p>
-              ) : null}
               <div className="mt-4 rounded-[var(--radius-control)] border border-border-soft bg-background/25 p-4">
                 {successOrder?.payment ? (
                   <p className="mb-3 text-sm text-text-muted">
@@ -442,27 +316,9 @@ export function PublicOrderPage() {
                     : "Chave PIX ainda nao configurada."}
                 </p>
               </div>
-              {pixPayload ? (
-                <div className="mt-4 rounded-[var(--radius-control)] border border-border-soft bg-background/25 p-4">
-                  <p className="text-xs font-semibold uppercase tracking-[0.16em] text-text-muted">
-                    Codigo PIX
-                  </p>
-                  <p className="mt-2 break-all text-sm text-text-muted">
-                    {pixPayload}
-                  </p>
-                </div>
-              ) : null}
-              <div className="mt-4 grid gap-3 sm:grid-cols-2">
-                <Button disabled={!hasPixKeyConfigured()} type="button" variant="primary" onClick={() => void handleCopyPixKey()}>
+              <div className="mt-4">
+                <Button disabled={!hasPixKeyConfigured()} fullWidth type="button" variant="primary" onClick={() => void handleCopyPixKey()}>
                   Copiar chave PIX
-                </Button>
-                <Button
-                  disabled={!pixPayload}
-                  type="button"
-                  variant="secondary"
-                  onClick={() => void handleCopyPixPayload()}
-                >
-                  Copiar codigo PIX
                 </Button>
               </div>
               <div className="mt-3">
@@ -515,18 +371,29 @@ export function PublicOrderPage() {
   return (
     <main className="min-h-screen bg-background">
       <PageContainer className="space-y-6 pb-8">
-        <Card className="space-y-4 p-5 sm:p-6">
-          <PageTitle eyebrow="Faca seu pedido" title="Monte seu pedido com rapidez e clareza" subtitle="Escolha os produtos, informe seus dados e finalize tudo em poucos passos." />
-          <div className="flex flex-col gap-3 sm:flex-row">
-            <Link className="inline-flex min-h-12 items-center justify-center rounded-[var(--radius-control)] border border-transparent bg-accent px-5 py-3 text-sm font-semibold text-text-contrast transition hover:bg-accent-strong" href="/">
-              Voltar para o inicio
-            </Link>
-            <a className="inline-flex min-h-12 items-center justify-center rounded-[var(--radius-control)] border border-border-strong bg-surface px-5 py-3 text-sm font-semibold text-foreground transition hover:bg-surface-muted" href={buildPublicWhatsAppUrl(publicWhatsAppMessage)} rel="noreferrer" target="_blank">
-              Falar no WhatsApp
-            </a>
+        <section className="relative overflow-hidden rounded-[var(--radius-card)] border border-border-soft bg-[#563725] shadow-soft">
+          <Image
+            alt="Dadinhos de tapioca dourados da Giu"
+            className="absolute inset-0 h-full w-full object-cover opacity-40"
+            fill
+            priority
+            sizes="(max-width: 1152px) 100vw, 1152px"
+            src="/dadinhos-hero.png"
+          />
+          <div className="absolute inset-0 bg-[#2b1a12]/55" />
+          <div className="relative max-w-3xl space-y-4 p-5 sm:p-8">
+            <PageTitle eyebrow="Faca seu pedido" title="Monte seu pedido com rapidez e clareza" subtitle="Escolha os produtos, informe seus dados e finalize tudo em poucos passos." />
+            <div className="flex flex-col gap-3 sm:flex-row">
+              <Link className="inline-flex min-h-12 items-center justify-center rounded-[var(--radius-control)] border border-transparent bg-accent px-5 py-3 text-sm font-semibold text-text-contrast transition hover:bg-accent-strong" href="/">
+                Voltar para o inicio
+              </Link>
+              <a className="inline-flex min-h-12 items-center justify-center rounded-[var(--radius-control)] border border-[#f5e6d3]/35 bg-[#f5e6d3]/12 px-5 py-3 text-sm font-semibold text-foreground transition hover:bg-[#f5e6d3]/18" href={buildPublicWhatsAppUrl(publicWhatsAppMessage)} rel="noreferrer" target="_blank">
+                Falar no WhatsApp
+              </a>
+            </div>
+            {errorMessage ? <div className="rounded-[var(--radius-control)] border border-red-300/30 bg-red-950/70 px-4 py-3 text-sm text-red-100">{errorMessage}</div> : null}
           </div>
-          {errorMessage ? <div className="rounded-[var(--radius-control)] border border-red-300/30 bg-red-950/40 px-4 py-3 text-sm text-red-100">{errorMessage}</div> : null}
-        </Card>
+        </section>
 
         <div className="grid gap-4 sm:gap-6 lg:grid-cols-[minmax(0,1fr)_420px]">
           <Card className="space-y-5 p-4 sm:space-y-6 sm:p-6">
@@ -543,16 +410,32 @@ export function PublicOrderPage() {
                     const quantity = formState.quantities[product.id] ?? 0;
                     const isOutOfStock = product.stockQuantity <= 0;
                     return (
-                      <Card key={product.id} className={`border-border-strong p-4 sm:p-5 ${isOutOfStock ? "bg-background/20 opacity-80" : "bg-surface-muted"}`.trim()}>
+                      <article key={product.id} className={`rounded-[var(--radius-card)] border border-border-strong p-4 shadow-soft sm:p-5 ${isOutOfStock ? "bg-background/20 opacity-80" : "bg-surface-muted"}`.trim()}>
+                        <div className="relative mb-4 h-32 overflow-hidden rounded-[var(--radius-control)] border border-border-soft bg-background/20">
+                          <Image
+                            alt=""
+                            className="h-32 w-full object-cover"
+                            fill
+                            sizes="(max-width: 768px) 100vw, 360px"
+                            src="/dadinhos-hero.png"
+                          />
+                        </div>
                         <div className="flex items-start justify-between gap-3">
                           <div className="space-y-1.5">
                             <h2 className="text-lg font-semibold">{product.name}</h2>
-                            <p className="text-sm text-text-muted">{formatPrice(product.price)}</p>
+                            <p className="text-sm text-text-muted">{formatPrice(product.price)} cada</p>
                           </div>
                           <span className={`rounded-full border px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.12em] ${isOutOfStock ? "border-amber-300/30 bg-amber-950/30 text-amber-100" : "border-emerald-300/30 bg-emerald-950/30 text-emerald-100"}`.trim()}>
                             {isOutOfStock ? "Sob encomenda" : "Pronta entrega"}
                           </span>
                         </div>
+                        {product.bulkMinQty !== null && product.bulkPrice !== null ? (
+                          <div className="mt-3 rounded-[var(--radius-control)] border border-amber-300/30 bg-amber-950/30 px-3 py-2">
+                            <p className="text-xs font-semibold text-amber-100">
+                              Promocao: {product.bulkMinQty} por {formatPrice(product.bulkPrice)} (economize {formatPrice(product.price * product.bulkMinQty - product.bulkPrice)})
+                            </p>
+                          </div>
+                        ) : null}
                         <div className="mt-5 flex items-center justify-between gap-3">
                           <Button className="h-12 w-12 rounded-full px-0 py-0 text-lg" disabled={quantity === 0} type="button" variant="secondary" onClick={() => updateQuantity(product.id, quantity - 1)}>
                             -
@@ -563,7 +446,7 @@ export function PublicOrderPage() {
                           </Button>
                         </div>
                         <p className="mt-4 text-sm text-text-muted">{isOutOfStock ? "Disponivel sob encomenda." : "Disponivel para pronta entrega."}</p>
-                      </Card>
+                      </article>
                     );
                   })}
                 </div>
@@ -607,21 +490,12 @@ export function PublicOrderPage() {
                   </Select>
                 </label>
                 {formState.paymentMethod === "PIX" ? (
-                  <label className="block space-y-2">
-                    <span className="text-sm font-medium text-foreground">CPF ou CNPJ</span>
-                    <Input
-                      inputMode="numeric"
-                      maxLength={18}
-                      placeholder="000.000.000-00"
-                      value={formState.customerCpfCnpj}
-                      onChange={(event) =>
-                        updateField(
-                          "customerCpfCnpj",
-                          formatCpfCnpj(event.target.value.replace(/\D/g, "")),
-                        )
-                      }
-                    />
-                  </label>
+                  <div className="rounded-[var(--radius-control)] border border-border-strong bg-background/25 p-4">
+                    <p className="text-sm font-semibold text-foreground">Pagamento via PIX</p>
+                    <p className="mt-2 text-sm text-text-muted">
+                      Depois de finalizar, a chave PIX da Giu aparece na tela com um botao para copiar.
+                    </p>
+                  </div>
                 ) : (
                   <div className="rounded-[var(--radius-control)] border border-border-strong bg-background/25 p-4">
                     <p className="text-sm font-semibold text-foreground">Pagamento em dinheiro</p>
@@ -678,10 +552,7 @@ export function PublicOrderPage() {
                 ) : (
                   <div className="rounded-[var(--radius-control)] border border-border-strong bg-background/25 p-4">
                     <p className="text-sm font-semibold text-foreground">Pedido para retirada</p>
-                    <p className="mt-2 text-sm text-text-muted">Vamos preparar seu pedido para retirada. Se quiser, voce ja pode falar com a Giu pelo WhatsApp.</p>
-                    <Button className="mt-4" disabled={selectedItems.length === 0} type="button" variant="secondary" onClick={() => window.open(pickupWhatsAppUrl, "_blank", "noopener,noreferrer")}>
-                      Combinar retirada no WhatsApp
-                    </Button>
+                    <p className="mt-2 text-sm text-text-muted">Depois que o pedido for finalizado, a Giu combina o melhor horario de retirada pelo WhatsApp.</p>
                   </div>
                 )}
               </div>
@@ -699,15 +570,23 @@ export function PublicOrderPage() {
                   <p className="mt-3 text-sm text-text-muted">Nenhum item selecionado ainda.</p>
                 ) : (
                   <div className="mt-3 space-y-3">
-                    {selectedItems.map((item) => (
-                      <div key={item.product.id} className="flex items-start justify-between gap-3 rounded-[var(--radius-control)] border border-border-soft bg-surface-muted/60 px-4 py-3">
-                        <div>
-                          <p className="text-sm font-medium text-foreground">{item.product.name}</p>
-                          <p className="text-sm text-text-muted">Quantidade: {item.quantity}</p>
+                    {selectedItems.map((item) => {
+                      const rule = { bulkMinQty: item.product.bulkMinQty, bulkPrice: item.product.bulkPrice };
+                      const lineTotal = calculateBulkLineTotal(item.product.price, item.quantity, rule);
+                      const promoAtiva = hasBulkPromotion(item.quantity, rule);
+                      return (
+                        <div key={item.product.id} className="flex items-start justify-between gap-3 rounded-[var(--radius-control)] border border-border-soft bg-surface-muted/60 px-4 py-3">
+                          <div>
+                            <p className="text-sm font-medium text-foreground">{item.product.name}</p>
+                            <p className="text-sm text-text-muted">Quantidade: {item.quantity}</p>
+                            {promoAtiva ? (
+                              <p className="text-xs font-semibold text-amber-300">Promocao aplicada</p>
+                            ) : null}
+                          </div>
+                          <p className="text-sm font-medium text-foreground">{formatPrice(lineTotal)}</p>
                         </div>
-                        <p className="text-sm font-medium text-foreground">{formatPrice(item.product.price * item.quantity)}</p>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 )}
               </div>

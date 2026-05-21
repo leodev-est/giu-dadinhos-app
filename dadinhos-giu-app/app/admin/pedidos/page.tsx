@@ -32,11 +32,9 @@ type Order = {
   deliveryMethod: DeliveryMethod;
   paymentMethod?: "PIX" | "CASH";
   payment?: {
-    provider: "MANUAL_PIX" | "ASAAS";
     status: PaymentStatus;
-    externalId?: string | null;
-    expiresAt?: string | null;
     paidAt?: string | null;
+    receiptNote?: string | null;
   } | null;
   totalPrice: number;
   desiredDate?: string | null;
@@ -53,7 +51,6 @@ type Order = {
     id?: string;
     name: string;
     phone: string;
-    cpfCnpj?: string | null;
   };
   items: Array<{
     id?: string;
@@ -79,7 +76,17 @@ const orderStatuses: OrderStatus[] = [
   "DELIVERED",
   "CANCELLED",
 ];
+const paymentStatuses: PaymentStatus[] = ["PENDING", "CONFIRMED", "FAILED", "EXPIRED"];
 const POLLING_INTERVAL_MS = 5000;
+
+function getTodayDateInSaoPaulo() {
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: "America/Sao_Paulo",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(new Date());
+}
 
 function formatPrice(price: number) {
   return new Intl.NumberFormat("pt-BR", {
@@ -109,6 +116,9 @@ export default function AdminPedidosPage() {
   const [recentlyUpdatedOrderIds, setRecentlyUpdatedOrderIds] = useState<string[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState<"ALL" | OrderStatus>("ALL");
+  const [paymentFilter, setPaymentFilter] = useState<"ALL" | PaymentStatus>("ALL");
+  const [deliveryFilter, setDeliveryFilter] = useState<"ALL" | DeliveryMethod>("ALL");
+  const [receiptNotes, setReceiptNotes] = useState<Record<string, string>>({});
   const [createdDateFrom, setCreatedDateFrom] = useState("");
   const [createdDateTo, setCreatedDateTo] = useState("");
   const [desiredDateFrom, setDesiredDateFrom] = useState("");
@@ -270,9 +280,91 @@ export default function AdminPedidosPage() {
     setPendingOrderId(null);
   }
 
+  async function handlePaymentStatusChange(
+    orderId: string,
+    paymentStatus: PaymentStatus,
+    receiptNote?: string,
+  ) {
+    setErrorMessage("");
+    setSuccessMessage("");
+    setPendingOrderId(orderId);
+
+    const response = await fetch(`/api/pedidos/${orderId}`, {
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ paymentStatus, paymentReceiptNote: receiptNote }),
+    });
+
+    const data = (await response.json()) as Order | ApiError;
+
+    if (!response.ok) {
+      setErrorMessage(
+        "error" in data
+          ? data.error ?? "Nao foi possivel atualizar o pagamento."
+          : "Nao foi possivel atualizar o pagamento.",
+      );
+      setPendingOrderId(null);
+      return;
+    }
+
+    setOrders((current) =>
+      current.map((order) =>
+        order.id === orderId && "payment" in data
+          ? { ...order, payment: data.payment }
+          : order,
+      ),
+    );
+    setLastSyncedAt(new Date());
+    setRecentlyUpdatedOrderIds([orderId]);
+    setSuccessMessage("Pagamento atualizado com sucesso.");
+    setPendingOrderId(null);
+  }
+
+  async function handlePaymentReceiptNoteSave(orderId: string, receiptNote: string) {
+    setErrorMessage("");
+    setSuccessMessage("");
+    setPendingOrderId(orderId);
+
+    const response = await fetch(`/api/pedidos/${orderId}`, {
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ paymentReceiptNote: receiptNote }),
+    });
+
+    const data = (await response.json()) as Order | ApiError;
+
+    if (!response.ok) {
+      setErrorMessage(
+        "error" in data
+          ? data.error ?? "Nao foi possivel salvar a observacao do comprovante."
+          : "Nao foi possivel salvar a observacao do comprovante.",
+      );
+      setPendingOrderId(null);
+      return;
+    }
+
+    setOrders((current) =>
+      current.map((order) =>
+        order.id === orderId && "payment" in data
+          ? { ...order, payment: data.payment }
+          : order,
+      ),
+    );
+    setLastSyncedAt(new Date());
+    setRecentlyUpdatedOrderIds([orderId]);
+    setSuccessMessage("Observacao do comprovante salva.");
+    setPendingOrderId(null);
+  }
+
   function clearFilters() {
     setSearchTerm("");
     setStatusFilter("ALL");
+    setPaymentFilter("ALL");
+    setDeliveryFilter("ALL");
     setCreatedDateFrom("");
     setCreatedDateTo("");
     setDesiredDateFrom("");
@@ -291,6 +383,12 @@ export default function AdminPedidosPage() {
       const matchesStatus =
         statusFilter === "ALL" || order.status === statusFilter;
 
+      const matchesPayment =
+        paymentFilter === "ALL" || order.payment?.status === paymentFilter;
+
+      const matchesDelivery =
+        deliveryFilter === "ALL" || order.deliveryMethod === deliveryFilter;
+
       const createdDate = order.createdAt.slice(0, 10);
       const matchesCreatedDateFrom =
         !createdDateFrom || createdDate >= createdDateFrom;
@@ -306,6 +404,8 @@ export default function AdminPedidosPage() {
       return (
         matchesSearch &&
         matchesStatus &&
+        matchesPayment &&
+        matchesDelivery &&
         matchesCreatedDateFrom &&
         matchesCreatedDateTo &&
         matchesDesiredDateFrom &&
@@ -318,7 +418,9 @@ export default function AdminPedidosPage() {
     deferredSearchTerm,
     desiredDateFrom,
     desiredDateTo,
+    deliveryFilter,
     orders,
+    paymentFilter,
     statusFilter,
   ]);
 
@@ -357,6 +459,41 @@ export default function AdminPedidosPage() {
         </Card>
 
         <Card className="space-y-4">
+          <div className="flex flex-wrap gap-2">
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={() => {
+                const today = getTodayDateInSaoPaulo();
+                setCreatedDateFrom(today);
+                setCreatedDateTo(today);
+              }}
+            >
+              Hoje
+            </Button>
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={() => setPaymentFilter("PENDING")}
+            >
+              Aguardando pagamento
+            </Button>
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={() => setDeliveryFilter("DELIVERY")}
+            >
+              Para entrega
+            </Button>
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={() => setDeliveryFilter("PICKUP")}
+            >
+              Para retirada
+            </Button>
+          </div>
+
           <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
             <div className="w-full lg:max-w-md">
               <label className="block space-y-2">
@@ -376,7 +513,7 @@ export default function AdminPedidosPage() {
             </Button>
           </div>
 
-          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
+          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-6">
             <label className="block space-y-2">
               <span className="text-sm font-medium text-foreground">Status</span>
               <Select
@@ -391,6 +528,37 @@ export default function AdminPedidosPage() {
                     {orderStatusConfig[status].label}
                   </option>
                 ))}
+              </Select>
+            </label>
+
+            <label className="block space-y-2">
+              <span className="text-sm font-medium text-foreground">Pagamento</span>
+              <Select
+                value={paymentFilter}
+                onChange={(event) =>
+                  setPaymentFilter(event.target.value as "ALL" | PaymentStatus)
+                }
+              >
+                <option value="ALL">Todos</option>
+                {paymentStatuses.map((status) => (
+                  <option key={status} value={status}>
+                    {paymentStatusConfig[status].label}
+                  </option>
+                ))}
+              </Select>
+            </label>
+
+            <label className="block space-y-2">
+              <span className="text-sm font-medium text-foreground">Recebimento</span>
+              <Select
+                value={deliveryFilter}
+                onChange={(event) =>
+                  setDeliveryFilter(event.target.value as "ALL" | DeliveryMethod)
+                }
+              >
+                <option value="ALL">Todos</option>
+                <option value="DELIVERY">Entrega</option>
+                <option value="PICKUP">Retirada</option>
               </Select>
             </label>
 
@@ -488,7 +656,6 @@ export default function AdminPedidosPage() {
 
                       <div className="grid gap-2 text-sm text-text-muted sm:grid-cols-2">
                         <p>Telefone: {order.customer.phone}</p>
-                        <p>CPF/CNPJ: {order.customer.cpfCnpj ?? "Nao informado"}</p>
                         <p>Total: {formatPrice(order.totalPrice)}</p>
                         <p>Status: {orderStatusConfig[order.status].label}</p>
                         <p>
@@ -549,6 +716,79 @@ export default function AdminPedidosPage() {
                           </option>
                         ))}
                       </Select>
+
+                      {order.paymentMethod === "PIX" ? (
+                        <div className="rounded-[var(--radius-control)] border border-border-soft bg-background/25 p-3">
+                          <p className="text-sm font-medium text-foreground">
+                            Pagamento Pix
+                          </p>
+                          <p className="mt-1 text-sm text-text-muted">
+                            {order.payment
+                              ? paymentStatusConfig[order.payment.status].label
+                              : "Nao informado"}
+                          </p>
+                          {order.payment?.paidAt ? (
+                            <p className="mt-1 text-xs text-text-muted">
+                              Confirmado em {formatDate(order.payment.paidAt)}
+                            </p>
+                          ) : null}
+                          <label className="mt-3 block space-y-2">
+                            <span className="text-xs font-semibold uppercase tracking-[0.12em] text-text-muted">
+                              Comprovante
+                            </span>
+                            <textarea
+                              className="ui-focus min-h-20 w-full rounded-[var(--radius-control)] border border-transparent bg-[#f5e6d3] px-3 py-2 text-sm text-text-contrast placeholder:text-[#7f6454] shadow-soft"
+                              placeholder="Ex.: comprovante enviado no WhatsApp"
+                              value={receiptNotes[order.id] ?? order.payment?.receiptNote ?? ""}
+                              onChange={(event) =>
+                                setReceiptNotes((current) => ({
+                                  ...current,
+                                  [order.id]: event.target.value,
+                                }))
+                              }
+                            />
+                          </label>
+                          <Button
+                            className="mt-3"
+                            disabled={statusDisabled}
+                            fullWidth
+                            type="button"
+                            variant={
+                              order.payment?.status === "CONFIRMED"
+                                ? "secondary"
+                                : "primary"
+                            }
+                            onClick={() =>
+                              void handlePaymentStatusChange(
+                                order.id,
+                                order.payment?.status === "CONFIRMED"
+                                  ? "PENDING"
+                                  : "CONFIRMED",
+                                receiptNotes[order.id] ?? order.payment?.receiptNote ?? "",
+                              )
+                            }
+                          >
+                            {order.payment?.status === "CONFIRMED"
+                              ? "Voltar para aguardando"
+                              : "Marcar Pix recebido"}
+                          </Button>
+                          <Button
+                            className="mt-2"
+                            disabled={statusDisabled}
+                            fullWidth
+                            type="button"
+                            variant="ghost"
+                            onClick={() =>
+                              void handlePaymentReceiptNoteSave(
+                                order.id,
+                                receiptNotes[order.id] ?? order.payment?.receiptNote ?? "",
+                              )
+                            }
+                          >
+                            Salvar comprovante
+                          </Button>
+                        </div>
+                      ) : null}
 
                       <Link
                         className="mt-2 inline-flex w-full items-center justify-center rounded-[var(--radius-control)] border border-border-strong bg-surface px-4 py-3 text-sm font-semibold text-foreground transition hover:bg-surface"

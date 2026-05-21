@@ -1,0 +1,4 @@
+.vercel
+# Google Cloud service account credentials
+*-g4-*.json
+fourth-dynamo-*.json

@@ -13,6 +13,7 @@ import {
   type DeliveryMethod,
 } from "@/lib/order-formatters";
 import { orderStatusConfig, type OrderStatus } from "@/lib/order-status";
+import { paymentStatusConfig, type PaymentStatus } from "@/lib/payment-status";
 import { PageContainer } from "@/components/ui/page-container";
 import { PageTitle } from "@/components/ui/page-title";
 import { Select } from "@/components/ui/select";
@@ -23,9 +24,10 @@ type OrderDetail = {
   id: string; status: OrderStatus; totalPrice: number; desiredDate?: string | null;
   deliveryMethod: DeliveryMethod;
   paymentMethod?: "PIX" | "CASH";
+  payment?: { status: PaymentStatus; paidAt?: string | null; receiptNote?: string | null } | null;
   zipCode?: string | null; street?: string | null; neighborhood?: string | null; city?: string | null;
   state?: string | null; addressNumber?: string | null; addressComplement?: string | null; notes?: string | null;
-  createdAt: string; customer: { id: string; name: string; phone: string; cpfCnpj?: string | null };
+  createdAt: string; customer: { id: string; name: string; phone: string };
   items: Array<{ id: string; quantity: number; price: number; product: { id: string; name: string; price: number } }>;
   customerHistory: Array<{ id: string; status: OrderStatus; totalPrice: number; desiredDate?: string | null; createdAt: string; isCurrentOrder: boolean; items: Array<{ id: string; quantity: number; product: { id: string; name: string } }> }>;
 };
@@ -69,6 +71,7 @@ export default function AdminPedidoDetailPage() {
   const [isSavingEdit, setIsSavingEdit] = useState(false);
   const [isLoadingAddress, setIsLoadingAddress] = useState(false);
   const [lastFetchedZipCode, setLastFetchedZipCode] = useState("");
+  const [paymentReceiptNote, setPaymentReceiptNote] = useState("");
   const [editForm, setEditForm] = useState<EditOrderForm>({ desiredDate: "", status: "CREATED", deliveryMethod: "DELIVERY", zipCode: "", street: "", neighborhood: "", city: "", state: "", addressNumber: "", addressComplement: "", notes: "" });
 
   useEffect(() => {
@@ -82,7 +85,7 @@ export default function AdminPedidoDetailPage() {
           setOrder(null); return;
         }
         const nextOrder = data as OrderDetail;
-        setOrder(nextOrder); setEditForm(createEditForm(nextOrder)); setLastFetchedZipCode(formatZipCode(nextOrder.zipCode ?? "")); setSelectedTemplate(nextOrder.status);
+        setOrder(nextOrder); setEditForm(createEditForm(nextOrder)); setLastFetchedZipCode(formatZipCode(nextOrder.zipCode ?? "")); setSelectedTemplate(nextOrder.status); setPaymentReceiptNote(nextOrder.payment?.receiptNote ?? "");
       } catch { setErrorMessage("Nao foi possivel carregar o pedido."); setOrder(null); } finally { setIsLoading(false); }
     }
     if (orderId) void loadOrder();
@@ -151,6 +154,36 @@ export default function AdminPedidoDetailPage() {
     } catch { setErrorMessage("Nao foi possivel atualizar o status."); } finally { setIsUpdatingStatus(false); }
   }
 
+  async function handlePaymentStatusChange(nextPaymentStatus: PaymentStatus) {
+    if (!order || nextPaymentStatus === order.payment?.status) return;
+    setErrorMessage(""); setSuccessMessage(""); setIsUpdatingStatus(true);
+    try {
+      const response = await fetch(`/api/pedidos/${order.id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ paymentStatus: nextPaymentStatus, paymentReceiptNote }) });
+      const data = (await response.json()) as OrderDetail | ApiError;
+      if (!response.ok) {
+        setErrorMessage("error" in data ? data.error ?? "Nao foi possivel atualizar o pagamento." : "Nao foi possivel atualizar o pagamento.");
+        return;
+      }
+      const nextOrder = data as OrderDetail;
+      setOrder(nextOrder); setEditForm(createEditForm(nextOrder)); setLastFetchedZipCode(formatZipCode(nextOrder.zipCode ?? "")); setSelectedTemplate(nextOrder.status); setPaymentReceiptNote(nextOrder.payment?.receiptNote ?? ""); setSuccessMessage("Pagamento atualizado com sucesso.");
+    } catch { setErrorMessage("Nao foi possivel atualizar o pagamento."); } finally { setIsUpdatingStatus(false); }
+  }
+
+  async function handlePaymentReceiptNoteSave() {
+    if (!order) return;
+    setErrorMessage(""); setSuccessMessage(""); setIsUpdatingStatus(true);
+    try {
+      const response = await fetch(`/api/pedidos/${order.id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ paymentReceiptNote }) });
+      const data = (await response.json()) as OrderDetail | ApiError;
+      if (!response.ok) {
+        setErrorMessage("error" in data ? data.error ?? "Nao foi possivel salvar a observacao do comprovante." : "Nao foi possivel salvar a observacao do comprovante.");
+        return;
+      }
+      const nextOrder = data as OrderDetail;
+      setOrder(nextOrder); setPaymentReceiptNote(nextOrder.payment?.receiptNote ?? ""); setSuccessMessage("Observacao do comprovante salva.");
+    } catch { setErrorMessage("Nao foi possivel salvar a observacao do comprovante."); } finally { setIsUpdatingStatus(false); }
+  }
+
   async function handleEditSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!order) return;
@@ -213,7 +246,7 @@ export default function AdminPedidoDetailPage() {
                   <StatusBadge status={order.status} />
                 </div>
                 <div className="grid gap-3 text-sm text-text-muted sm:grid-cols-2">
-                  <p>ID do pedido: {order.id}</p><p>Data de criacao: {formatDate(order.createdAt)}</p><p>Cliente: {order.customer.name}</p><p>Telefone: {order.customer.phone}</p><p>CPF/CNPJ: {order.customer.cpfCnpj ?? "Nao informado"}</p><p>Pagamento: {order.paymentMethod === "CASH" ? "Dinheiro" : "PIX"}</p><p>Status do cliente: {orderStatusConfig[order.status].label}</p><p>Recebimento: {formatDeliveryMethodLabel(order.deliveryMethod)}</p><p>Para quando: {formatOrderDesiredDate(order.desiredDate) ?? "Nao informado"}</p>
+                  <p>ID do pedido: {order.id}</p><p>Data de criacao: {formatDate(order.createdAt)}</p><p>Cliente: {order.customer.name}</p><p>Telefone: {order.customer.phone}</p><p>Pagamento: {order.paymentMethod === "CASH" ? "Dinheiro" : "PIX"}</p><p>Status do cliente: {orderStatusConfig[order.status].label}</p><p>Recebimento: {formatDeliveryMethodLabel(order.deliveryMethod)}</p><p>Para quando: {formatOrderDesiredDate(order.desiredDate) ?? "Nao informado"}</p>
                 </div>
                 {order.notes ? <div className="rounded-[var(--radius-control)] border border-border-soft bg-background/25 px-4 py-3"><p className="text-sm font-medium text-foreground">Observacao do pedido</p><p className="mt-2 text-sm leading-6 text-text-muted">{order.notes}</p></div> : null}
                 {!isEditing ? <div className="space-y-2"><label className="block text-sm font-medium text-foreground">Atualizar status</label><Select disabled={isUpdatingStatus} value={order.status} onChange={(event) => void handleStatusChange(event.target.value as OrderStatus)}>{orderStatuses.map((status) => <option key={status} value={status}>{orderStatusConfig[status].label}</option>)}</Select></div> : null}
@@ -222,6 +255,58 @@ export default function AdminPedidoDetailPage() {
                 <h2 className="text-xl font-semibold text-foreground">Resumo financeiro</h2>
                 <div className="rounded-[var(--radius-control)] border border-border-strong bg-background/25 px-4 py-4"><p className="text-sm text-text-muted">Total do pedido</p><p className="mt-2 text-3xl font-semibold text-accent">{formatPrice(order.totalPrice)}</p></div>
                 <div className="grid gap-2 text-sm text-text-muted"><p>Itens no pedido: {order.items.length}</p><p>Quantidade total: {order.items.reduce((total, item) => total + item.quantity, 0)}</p></div>
+                {order.paymentMethod === "PIX" ? (
+                  <div className="rounded-[var(--radius-control)] border border-border-soft bg-background/25 px-4 py-4">
+                    <p className="text-sm text-text-muted">Status do Pix</p>
+                    <p className="mt-2 text-xl font-semibold text-foreground">
+                      {order.payment
+                        ? paymentStatusConfig[order.payment.status].label
+                        : "Nao informado"}
+                    </p>
+                    {order.payment?.paidAt ? (
+                      <p className="mt-2 text-sm text-text-muted">
+                        Confirmado em {formatDate(order.payment.paidAt)}
+                      </p>
+                    ) : null}
+                    <label className="mt-4 block space-y-2">
+                      <span className="text-sm font-medium text-foreground">
+                        Observacao do comprovante
+                      </span>
+                      <textarea
+                        className="ui-focus min-h-24 w-full rounded-[var(--radius-control)] border border-transparent bg-[#f5e6d3] px-4 py-3 text-sm text-text-contrast placeholder:text-[#7f6454] shadow-soft"
+                        placeholder="Ex.: comprovante enviado no WhatsApp"
+                        value={paymentReceiptNote}
+                        onChange={(event) => setPaymentReceiptNote(event.target.value)}
+                      />
+                    </label>
+                    <Button
+                      className="mt-4"
+                      disabled={isUpdatingStatus}
+                      fullWidth
+                      type="button"
+                      variant={order.payment?.status === "CONFIRMED" ? "secondary" : "primary"}
+                      onClick={() =>
+                        void handlePaymentStatusChange(
+                          order.payment?.status === "CONFIRMED" ? "PENDING" : "CONFIRMED",
+                        )
+                      }
+                    >
+                      {order.payment?.status === "CONFIRMED"
+                        ? "Voltar para aguardando"
+                        : "Marcar Pix recebido"}
+                    </Button>
+                    <Button
+                      className="mt-2"
+                      disabled={isUpdatingStatus}
+                      fullWidth
+                      type="button"
+                      variant="ghost"
+                      onClick={() => void handlePaymentReceiptNoteSave()}
+                    >
+                      Salvar comprovante
+                    </Button>
+                  </div>
+                ) : null}
               </Card>
             </div>
             {isEditing ? (

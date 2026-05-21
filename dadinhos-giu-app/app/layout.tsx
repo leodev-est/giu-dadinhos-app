@@ -29,10 +29,8 @@ export default function RootLayout({
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
       <body className="min-h-full bg-background font-sans text-foreground">
-        <div className="relative min-h-screen overflow-x-hidden">
-          <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top,_rgba(244,184,96,0.22),_transparent_35%),radial-gradient(circle_at_bottom_right,_rgba(217,154,59,0.18),_transparent_30%)]" />
-
-          <div className="relative z-10 flex min-h-screen flex-col">
+        <div className="min-h-screen overflow-x-hidden bg-[#36241b]">
+          <div className="flex min-h-screen flex-col">
             <AppHeader />
 
             <div className="flex-1">{children}</div>

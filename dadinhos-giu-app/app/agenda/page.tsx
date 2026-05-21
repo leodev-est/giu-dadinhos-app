@@ -578,7 +578,7 @@ export default function AgendaPage() {
                       isPending && pendingOrderId === order.id;
                     const deliveryWhatsAppUrl = buildWhatsAppLink(
                       order.customer.phone,
-                      `Oi, ${order.customer.name}.\n\nSeu pedido está em andamento para entrega.\nStatus atual: ${orderStatusConfig[order.status].label}.\n${order.desiredDate ? `Data combinada: ${formatOrderDesiredDate(order.desiredDate)}.\n` : ""}Se precisar, me chama por aqui.`,
+                      `Oi, ${order.customer.name}.\n\nSeu pedido esta em andamento para entrega.\nStatus atual: ${orderStatusConfig[order.status].label}.\n${order.desiredDate ? `Data combinada: ${formatOrderDesiredDate(order.desiredDate)}.\n` : ""}Se precisar, me chama por aqui.`,
                     );
 
                     return (

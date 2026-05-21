@@ -19,13 +19,9 @@ type PedidoComRelacoes = {
   deliveryMethod: "DELIVERY" | "PICKUP";
   deliveryOrder?: number | null;
   paymentMethod: "PIX" | "CASH";
-  paymentProvider: "MANUAL_PIX" | "ASAAS";
   paymentStatus: "PENDING" | "CONFIRMED" | "FAILED" | "EXPIRED";
-  paymentExternalId?: string | null;
-  paymentQrCode?: string | null;
-  paymentQrCodeImage?: string | null;
-  paymentExpiresAt?: Date | null;
   paidAt?: Date | null;
+  paymentReceiptNote?: string | null;
   totalPrice: DecimalLike;
   desiredDate?: string | null;
   zipCode?: string | null;
@@ -41,7 +37,6 @@ type PedidoComRelacoes = {
     id: string;
     name: string;
     phone: string;
-    cpfCnpj?: string | null;
   };
   items: Array<{
     id: string;
@@ -84,6 +79,8 @@ const editableOrderFields = [
   "addressNumber",
   "addressComplement",
   "notes",
+  "paymentStatus",
+  "paymentReceiptNote",
 ] as const;
 
 const patchOrderSchema = z.object({
@@ -110,6 +107,14 @@ const patchOrderSchema = z.object({
     .max(120, "Complemento invalido.")
     .optional(),
   notes: z.string().trim().max(500, "Observacao muito longa.").optional(),
+  paymentStatus: z
+    .enum(["PENDING", "CONFIRMED", "FAILED", "EXPIRED"])
+    .optional(),
+  paymentReceiptNote: z
+    .string()
+    .trim()
+    .max(500, "Observacao do comprovante muito longa.")
+    .optional(),
 });
 
 function buildPedidoSelect(includeDeliveryOrder: boolean) {
@@ -119,13 +124,9 @@ function buildPedidoSelect(includeDeliveryOrder: boolean) {
     deliveryMethod: true,
     ...(includeDeliveryOrder ? { deliveryOrder: true } : {}),
     paymentMethod: true,
-    paymentProvider: true,
     paymentStatus: true,
-    paymentExternalId: true,
-    paymentQrCode: true,
-    paymentQrCodeImage: true,
-    paymentExpiresAt: true,
     paidAt: true,
+    paymentReceiptNote: true,
     totalPrice: true,
     desiredDate: true,
     zipCode: true,
@@ -142,7 +143,6 @@ function buildPedidoSelect(includeDeliveryOrder: boolean) {
         id: true,
         name: true,
         phone: true,
-        cpfCnpj: true,
       },
     },
     items: {
@@ -192,13 +192,9 @@ function formatPedido(
     deliveryOrder: includeDeliveryOrder ? (pedido.deliveryOrder ?? null) : null,
     paymentMethod: pedido.paymentMethod,
     payment: {
-      provider: pedido.paymentProvider,
       status: pedido.paymentStatus,
-      externalId: pedido.paymentExternalId ?? null,
-      pixCopyAndPaste: pedido.paymentQrCode ?? null,
-      qrCodeImage: pedido.paymentQrCodeImage ?? null,
-      expiresAt: pedido.paymentExpiresAt?.toISOString() ?? null,
       paidAt: pedido.paidAt?.toISOString() ?? null,
+      receiptNote: pedido.paymentReceiptNote ?? null,
     },
     totalPrice: pedido.totalPrice.toNumber(),
     desiredDate: pedido.desiredDate ?? null,
@@ -215,7 +211,6 @@ function formatPedido(
       id: pedido.customer.id,
       name: pedido.customer.name,
       phone: pedido.customer.phone,
-      cpfCnpj: pedido.customer.cpfCnpj ?? null,
     },
     items: pedido.items.map((item) => ({
       id: item.id,
@@ -359,7 +354,7 @@ export async function PATCH(
       );
     }
 
-    const updateData: Record<string, string | number | null> = {};
+    const updateData: Record<string, string | number | Date | null> = {};
 
     if (Object.prototype.hasOwnProperty.call(body, "status")) {
       updateData.status = mapApiStatusToDb(
@@ -420,6 +415,18 @@ export async function PATCH(
 
     if (Object.prototype.hasOwnProperty.call(body, "notes")) {
       updateData.notes = getNullableString(parsedBody.data.notes);
+    }
+
+    if (Object.prototype.hasOwnProperty.call(body, "paymentStatus")) {
+      const nextPaymentStatus = parsedBody.data.paymentStatus ?? "PENDING";
+      updateData.paymentStatus = nextPaymentStatus;
+      updateData.paidAt = nextPaymentStatus === "CONFIRMED" ? new Date() : null;
+    }
+
+    if (Object.prototype.hasOwnProperty.call(body, "paymentReceiptNote")) {
+      updateData.paymentReceiptNote = getNullableString(
+        parsedBody.data.paymentReceiptNote,
+      );
     }
 
     const nextDeliveryMethod =
