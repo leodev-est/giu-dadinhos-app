@@ -4,6 +4,11 @@ export const dynamic = "force-dynamic";
 
 type DecimalLike = { toNumber: () => number };
 
+type AggregateResult = {
+  _sum: { totalPrice: DecimalLike | null };
+  _count: { id: number };
+};
+
 type OrderItemRecord = {
   quantity: number;
   price: DecimalLike;
@@ -28,7 +33,7 @@ export async function GET(request: Request) {
         ? { createdAt: { gte: new Date(from), lte: new Date(to + "T23:59:59.999Z") } }
         : {};
 
-    const [items, totalOrdersResult] = await Promise.all([
+    const [items, totalOrdersResult] = (await Promise.all([
       prisma.orderItem.findMany({
         where: { order: { ...dateFilter, status: { not: "CANCELADO" } } },
         select: {
@@ -45,13 +50,13 @@ export async function GET(request: Request) {
             },
           },
         },
-      }) as Promise<OrderItemRecord[]>,
+      }),
       prisma.order.aggregate({
         where: { status: { not: "CANCELADO" }, ...dateFilter },
         _sum: { totalPrice: true },
         _count: { id: true },
       }),
-    ]);
+    ])) as [OrderItemRecord[], AggregateResult];
 
     const productMap = new Map<string, { id: string; name: string; quantity: number; revenue: number }>();
 

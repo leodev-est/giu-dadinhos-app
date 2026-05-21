@@ -17,6 +17,7 @@ type PrismaDb = {
   $transaction: <T>(callback: (tx: PrismaDb) => Promise<T>) => Promise<T>;
   customer: {
     findFirst: (args: unknown) => Promise<unknown>;
+    findMany: (args: unknown) => Promise<unknown[]>;
     upsert: (args: unknown) => Promise<unknown>;
     update: (args: unknown) => Promise<unknown>;
     create: (args: unknown) => Promise<unknown>;
@@ -33,6 +34,27 @@ type PrismaDb = {
     findFirst: (args: unknown) => Promise<unknown>;
     findMany: (args: unknown) => Promise<unknown[]>;
     findUnique: (args: unknown) => Promise<unknown>;
+    update: (args: unknown) => Promise<unknown>;
+    aggregate: (args: unknown) => Promise<unknown>;
+  };
+  orderItem: {
+    findMany: (args: unknown) => Promise<unknown[]>;
+  };
+  appSetting: {
+    findMany: (args?: unknown) => Promise<unknown[]>;
+    findUnique: (args: unknown) => Promise<unknown>;
+    upsert: (args: unknown) => Promise<unknown>;
+  };
+  coupon: {
+    findMany: (args: unknown) => Promise<unknown[]>;
+    findFirst: (args: unknown) => Promise<unknown>;
+    findUnique: (args: unknown) => Promise<unknown>;
+    create: (args: unknown) => Promise<unknown>;
+    update: (args: unknown) => Promise<unknown>;
+  };
+  loyaltyCard: {
+    findUnique: (args: unknown) => Promise<unknown>;
+    create: (args: unknown) => Promise<unknown>;
     update: (args: unknown) => Promise<unknown>;
   };
 };
