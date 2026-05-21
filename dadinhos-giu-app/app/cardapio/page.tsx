@@ -112,7 +112,7 @@ export default function CardapioPage() {
 
         <div className="text-center">
           <Link href="/pedido">
-            <Button variant="primary" size="lg">Fazer pedido</Button>
+            <Button variant="primary">Fazer pedido</Button>
           </Link>
         </div>
       </PageContainer>

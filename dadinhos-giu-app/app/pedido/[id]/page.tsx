@@ -109,7 +109,7 @@ export default function PublicOrderTrackingPage() {
         {/* Status visual */}
         <Card className="space-y-4 p-6">
           <div className="flex items-center gap-3">
-            <StatusBadge config={statusCfg} />
+            <StatusBadge status={order.status} />
             <div>
               <p className="font-semibold text-foreground">{statusCfg.label}</p>
               <p className="text-xs text-text-muted">Atualizado em {formatDate(order.createdAt)}</p>
@@ -165,8 +165,8 @@ export default function PublicOrderTrackingPage() {
               {order.payment && (
                 <div className="flex justify-between">
                   <dt className="text-text-muted">Status pag.</dt>
-                  <dd>
-                    <StatusBadge config={paymentStatusConfig[order.payment.status]} />
+                  <dd className="font-medium text-foreground">
+                    {paymentStatusConfig[order.payment.status].label}
                   </dd>
                 </div>
               )}
