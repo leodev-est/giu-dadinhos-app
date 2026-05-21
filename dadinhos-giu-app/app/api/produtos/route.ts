@@ -23,6 +23,13 @@ const createProductSchema = z.object({
     .positive("Preco promocional deve ser maior que zero.")
     .nullable()
     .optional(),
+  imageUrl: z.string().trim().url("URL da imagem invalida.").nullable().optional(),
+  gramWeight: z
+    .number()
+    .int("Peso deve ser um numero inteiro.")
+    .positive("Peso deve ser maior que zero.")
+    .nullable()
+    .optional(),
 });
 
 type DecimalLike = {
@@ -37,6 +44,8 @@ type ProdutoRecord = {
   stockQuantity: number;
   bulkMinQty: number | null;
   bulkPrice: DecimalLike | null;
+  imageUrl: string | null;
+  gramWeight: number | null;
   createdAt: Date;
 };
 
@@ -49,6 +58,8 @@ function formatProduto(produto: ProdutoRecord) {
     stockQuantity: produto.stockQuantity,
     bulkMinQty: produto.bulkMinQty,
     bulkPrice: produto.bulkPrice?.toNumber() ?? null,
+    imageUrl: produto.imageUrl ?? null,
+    gramWeight: produto.gramWeight ?? null,
     createdAt: produto.createdAt,
   };
 }
@@ -83,6 +94,12 @@ export async function POST(request: Request) {
           : {}),
         ...(parsedBody.data.bulkPrice !== undefined
           ? { bulkPrice: parsedBody.data.bulkPrice?.toFixed(2) ?? null }
+          : {}),
+        ...(parsedBody.data.imageUrl !== undefined
+          ? { imageUrl: parsedBody.data.imageUrl }
+          : {}),
+        ...(parsedBody.data.gramWeight !== undefined
+          ? { gramWeight: parsedBody.data.gramWeight }
           : {}),
       },
     })) as ProdutoRecord;

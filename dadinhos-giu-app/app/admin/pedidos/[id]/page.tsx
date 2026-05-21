@@ -34,6 +34,7 @@ type OrderDetail = {
 type EditOrderForm = { desiredDate: string; status: OrderStatus; deliveryMethod: DeliveryMethod; zipCode: string; street: string; neighborhood: string; city: string; state: string; addressNumber: string; addressComplement: string; notes: string };
 type ApiError = { error?: string };
 type ViaCepResponse = { logradouro?: string; bairro?: string; localidade?: string; uf?: string; erro?: boolean };
+type LoyaltyCard = { stars: number; totalGrams: number; redeemedRewards: number; pendingRewards: number };
 
 const orderStatuses: OrderStatus[] = ["CREATED", "READY", "OUT_FOR_DELIVERY", "DELIVERED", "CANCELLED"];
 const whatsappTemplates: Array<{ status: WhatsAppOrderStatus; label: string }> = [
@@ -72,6 +73,7 @@ export default function AdminPedidoDetailPage() {
   const [isLoadingAddress, setIsLoadingAddress] = useState(false);
   const [lastFetchedZipCode, setLastFetchedZipCode] = useState("");
   const [paymentReceiptNote, setPaymentReceiptNote] = useState("");
+  const [loyaltyCard, setLoyaltyCard] = useState<LoyaltyCard | null>(null);
   const [editForm, setEditForm] = useState<EditOrderForm>({ desiredDate: "", status: "CREATED", deliveryMethod: "DELIVERY", zipCode: "", street: "", neighborhood: "", city: "", state: "", addressNumber: "", addressComplement: "", notes: "" });
 
   useEffect(() => {
@@ -90,6 +92,20 @@ export default function AdminPedidoDetailPage() {
     }
     if (orderId) void loadOrder();
   }, [orderId]);
+
+  useEffect(() => {
+    if (!order?.customer.id) return;
+    async function fetchLoyalty() {
+      try {
+        const res = await fetch(`/api/fidelidade/${order!.customer.id}`);
+        if (res.ok) {
+          const data = (await res.json()) as LoyaltyCard;
+          setLoyaltyCard(data);
+        }
+      } catch { /* silent */ }
+    }
+    void fetchLoyalty();
+  }, [order?.customer.id]);
 
   useEffect(() => {
     if (!isEditing) return;
@@ -227,6 +243,9 @@ export default function AdminPedidoDetailPage() {
             <div className="flex flex-wrap gap-3">
               <Link className="inline-flex items-center justify-center rounded-[var(--radius-control)] border border-border-strong bg-surface px-4 py-3 text-sm font-semibold text-foreground transition hover:bg-surface-muted" href="/admin/pedidos">Voltar para pedidos</Link>
               {order && !isEditing ? <Button type="button" variant="secondary" onClick={handleStartEdit}>Editar pedido</Button> : null}
+              {order ? (
+                <Link className="inline-flex items-center justify-center rounded-[var(--radius-control)] border border-border-strong bg-surface px-4 py-3 text-sm font-semibold text-foreground transition hover:bg-surface-muted" href="/pedido">Repetir pedido</Link>
+              ) : null}
               <Button disabled={!currentStatusWhatsappUrl} type="button" variant="primary" onClick={() => openWhatsApp(currentStatusWhatsappUrl)}>WhatsApp com status atual</Button>
             </div>
           </div>
@@ -405,6 +424,41 @@ export default function AdminPedidoDetailPage() {
                 ))}
               </div>
             </Card>
+            {loyaltyCard && (
+              <Card className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <h2 className="text-xl font-semibold text-foreground">Cartao Fidelidade</h2>
+                  {loyaltyCard.pendingRewards > 0 && (
+                    <span className="rounded-full bg-amber-950/60 px-3 py-1 text-xs font-medium text-amber-300">
+                      {loyaltyCard.pendingRewards} brinde(s) pendente(s)
+                    </span>
+                  )}
+                </div>
+                <div className="grid gap-4 sm:grid-cols-3">
+                  <div className="rounded-[var(--radius-control)] border border-border-soft bg-background/25 px-4 py-3 text-center">
+                    <p className="text-2xl font-bold text-accent">{loyaltyCard.stars}</p>
+                    <p className="text-xs text-text-muted">estrelas</p>
+                  </div>
+                  <div className="rounded-[var(--radius-control)] border border-border-soft bg-background/25 px-4 py-3 text-center">
+                    <p className="text-2xl font-bold text-foreground">{loyaltyCard.totalGrams}g</p>
+                    <p className="text-xs text-text-muted">acumulados</p>
+                  </div>
+                  <div className="rounded-[var(--radius-control)] border border-border-soft bg-background/25 px-4 py-3 text-center">
+                    <p className="text-2xl font-bold text-foreground">{loyaltyCard.redeemedRewards}</p>
+                    <p className="text-xs text-text-muted">brindes resgatados</p>
+                  </div>
+                </div>
+                <div className="flex gap-0.5">
+                  {Array.from({ length: 10 }, (_, i) => (
+                    <span key={i} className={(loyaltyCard.stars % 10 > i || (loyaltyCard.stars % 10 === 0 && loyaltyCard.stars > 0 && i < 10)) ? "text-accent text-xl" : "text-white/20 text-xl"}>
+                      ★
+                    </span>
+                  ))}
+                </div>
+                <p className="text-xs text-text-muted">A cada 10 estrelas o cliente ganha 1 brinde (500g).</p>
+              </Card>
+            )}
+
             <div className="grid gap-4 lg:grid-cols-[minmax(0,1.1fr)_360px]">
               <Card>
                 <h2 className="text-xl font-semibold text-foreground">Itens do pedido</h2>

@@ -30,6 +30,8 @@ type OrderResponse = {
   deliveryMethod: DeliveryMethod;
   paymentMethod: PaymentMethod;
   totalPrice: number;
+  deliveryFee?: number | null;
+  couponDiscount?: number | null;
   desiredDate?: string | null;
   zipCode?: string | null;
   street?: string | null;
@@ -72,6 +74,7 @@ function createInitialFormState() {
     addressNumber: "",
     addressComplement: "",
     orderNotes: "",
+    couponCode: "",
   };
 }
 
@@ -85,15 +88,24 @@ export function PublicOrderPage() {
   const [successMessage, setSuccessMessage] = useState("");
   const [successOrder, setSuccessOrder] = useState<OrderResponse | null>(null);
   const [pixCopyFeedback, setPixCopyFeedback] = useState("");
+  const [deliveryFee, setDeliveryFee] = useState(0);
 
   useEffect(() => {
     async function loadProducts() {
       try {
         setErrorMessage("");
-        const response = await fetch("/api/produtos", { cache: "no-store" });
-        if (!response.ok) throw new Error("Nao foi possivel carregar os produtos.");
-        const data = (await response.json()) as Product[];
+        const [prodRes, cfgRes] = await Promise.all([
+          fetch("/api/produtos", { cache: "no-store" }),
+          fetch("/api/configuracoes", { cache: "no-store" }),
+        ]);
+        if (!prodRes.ok) throw new Error("Nao foi possivel carregar os produtos.");
+        const data = (await prodRes.json()) as Product[];
         setProducts(data.filter((product) => product.active));
+        if (cfgRes.ok) {
+          const cfg = (await cfgRes.json()) as Record<string, string>;
+          const fee = parseFloat(cfg.deliveryFee ?? "0");
+          if (!isNaN(fee) && fee > 0) setDeliveryFee(fee);
+        }
       } catch (error) {
         setErrorMessage(error instanceof Error ? error.message : "Nao foi possivel carregar os produtos.");
       } finally {
@@ -148,10 +160,12 @@ export function PublicOrderPage() {
   }, [formState.deliveryMethod, formState.zipCode]);
 
   const selectedItems = useMemo(() => products.map((product) => ({ product, quantity: formState.quantities[product.id] ?? 0 })).filter((item) => item.quantity > 0), [formState.quantities, products]);
-  const visualTotal = useMemo(() => selectedItems.reduce((total, item) => {
+  const subtotal = useMemo(() => selectedItems.reduce((total, item) => {
     const rule = { bulkMinQty: item.product.bulkMinQty, bulkPrice: item.product.bulkPrice };
     return total + calculateBulkLineTotal(item.product.price, item.quantity, rule);
   }, 0), [selectedItems]);
+  const visualDeliveryFee = formState.deliveryMethod === "DELIVERY" ? deliveryFee : 0;
+  const visualTotal = subtotal + visualDeliveryFee;
   const paymentWhatsAppUrl = useMemo(() => {
     if (!successOrder) return buildPublicWhatsAppUrl(publicWhatsAppMessage);
     const contextMessage = successOrder.deliveryMethod === "PICKUP"
@@ -230,6 +244,7 @@ export function PublicOrderPage() {
           ...(formState.deliveryMethod === "DELIVERY" && trimmedAddressComplement ? { addressComplement: trimmedAddressComplement } : {}),
           ...(trimmedNotes ? { notes: trimmedNotes } : {}),
           items: selectedItems.map((item) => ({ productId: item.product.id, quantity: item.quantity })),
+          ...(formState.couponCode.trim() ? { couponCode: formState.couponCode.trim() } : {}),
         }),
       });
 
@@ -591,9 +606,28 @@ export function PublicOrderPage() {
                 )}
               </div>
 
-              <div className="flex items-center justify-between rounded-[var(--radius-control)] border border-border-strong bg-surface-muted/60 px-4 py-4">
-                <span className="text-sm font-medium text-text-muted">Total estimado</span>
-                <span className="text-2xl font-semibold text-accent">{formatPrice(visualTotal)}</span>
+              <div className="space-y-3 rounded-[var(--radius-control)] border border-border-soft bg-background/20 p-4">
+                <label className="block space-y-2">
+                  <span className="text-sm font-medium text-foreground">Cupom de desconto (opcional)</span>
+                  <Input
+                    placeholder="Ex.: PROMO10"
+                    value={formState.couponCode}
+                    onChange={(e) => updateField("couponCode", e.target.value.toUpperCase())}
+                  />
+                </label>
+              </div>
+
+              <div className="space-y-2 rounded-[var(--radius-control)] border border-border-strong bg-surface-muted/60 px-4 py-4">
+                {visualDeliveryFee > 0 && (
+                  <div className="flex items-center justify-between text-sm text-text-muted">
+                    <span>Taxa de entrega</span>
+                    <span>{formatPrice(visualDeliveryFee)}</span>
+                  </div>
+                )}
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-medium text-text-muted">Total estimado</span>
+                  <span className="text-2xl font-semibold text-accent">{formatPrice(visualTotal)}</span>
+                </div>
               </div>
 
               {formState.orderNotes.trim() ? (

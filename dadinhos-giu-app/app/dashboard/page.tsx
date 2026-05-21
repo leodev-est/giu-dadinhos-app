@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useOrderNotifications } from "@/hooks/use-order-notifications";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Card } from "@/components/ui/card";
 import { PageContainer } from "@/components/ui/page-container";
@@ -188,12 +189,18 @@ function buildWeekdayRevenue(orders: DashboardOrder[]) {
   });
 }
 
+const LOW_STOCK_THRESHOLD = 5;
+
+type ProductStock = { id: string; name: string; stockQuantity: number };
+
 export default function DashboardPage() {
   const [orders, setOrders] = useState<DashboardOrder[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState("");
   const [lastSyncedAt, setLastSyncedAt] = useState<Date | null>(null);
+  const [lowStockProducts, setLowStockProducts] = useState<ProductStock[]>([]);
   const pollingInFlightRef = useRef(false);
+  useOrderNotifications(orders);
 
   const loadOrders = useCallback(
     async (options?: { silent?: boolean }): Promise<void> => {
@@ -233,6 +240,18 @@ export default function DashboardPage() {
 
     void hydrateDashboard();
   }, [loadOrders]);
+
+  useEffect(() => {
+    async function fetchProducts() {
+      try {
+        const res = await fetch("/api/produtos", { cache: "no-store" });
+        if (!res.ok) return;
+        const data = (await res.json()) as ProductStock[];
+        setLowStockProducts(data.filter((p) => p.stockQuantity <= LOW_STOCK_THRESHOLD));
+      } catch { /* silent */ }
+    }
+    void fetchProducts();
+  }, []);
 
   useEffect(() => {
     const interval = window.setInterval(() => {
@@ -568,6 +587,34 @@ export default function DashboardPage() {
                 </div>
               )}
             </Card>
+
+            {lowStockProducts.length > 0 && (
+              <Card className="border-amber-300/20 bg-amber-950/10">
+                <div className="flex items-center justify-between gap-3">
+                  <h2 className="text-base font-semibold text-amber-200">
+                    Estoque baixo
+                  </h2>
+                  <span className="rounded-full bg-amber-950/60 px-3 py-1 text-xs font-medium text-amber-300">
+                    {lowStockProducts.length} produto(s)
+                  </span>
+                </div>
+                <div className="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+                  {lowStockProducts.map((product) => (
+                    <div
+                      key={product.id}
+                      className="flex items-center justify-between rounded-[var(--radius-control)] border border-amber-300/20 bg-amber-950/20 px-4 py-3"
+                    >
+                      <span className="text-sm text-foreground">{product.name}</span>
+                      <span
+                        className={`text-sm font-bold ${product.stockQuantity === 0 ? "text-red-400" : "text-amber-300"}`}
+                      >
+                        {product.stockQuantity === 0 ? "Esgotado" : `${product.stockQuantity} un.`}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </Card>
+            )}
           </>
         ) : null}
       </PageContainer>

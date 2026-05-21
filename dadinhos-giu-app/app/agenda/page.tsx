@@ -158,9 +158,27 @@ function getOperationalReadinessLabel(status: OrderStatus) {
   return "Ainda em preparo";
 }
 
+function buildCalendarDays(year: number, month: number, orders: AgendaOrder[]) {
+  const orderCountByDate = new Map<string, number>();
+  for (const order of orders) {
+    if (!order.desiredDate || order.status === "CANCELLED") continue;
+    const [y, m] = order.desiredDate.split("-");
+    if (Number(y) !== year || Number(m) !== month + 1) continue;
+    orderCountByDate.set(order.desiredDate, (orderCountByDate.get(order.desiredDate) ?? 0) + 1);
+  }
+  const firstDay = new Date(year, month, 1).getDay();
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+  return { firstDay, daysInMonth, orderCountByDate };
+}
+
 export default function AgendaPage() {
   const [orders, setOrders] = useState<AgendaOrder[]>([]);
   const [selectedDate, setSelectedDate] = useState(getTodayDateInSaoPaulo());
+  const [viewMode, setViewMode] = useState<"list" | "calendar">("list");
+  const [calendarDate, setCalendarDate] = useState(() => {
+    const today = new Date();
+    return { year: today.getFullYear(), month: today.getMonth() };
+  });
   const [isLoading, setIsLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState("");
   const [successMessage, setSuccessMessage] = useState("");
@@ -474,19 +492,93 @@ export default function AgendaPage() {
               title="Entregas e retiradas"
               subtitle="Veja tudo o que precisa sair na data escolhida, separado entre entrega e retirada."
             />
-            <div className="w-full max-w-xs">
-              <label className="block space-y-2">
-                <span className="text-sm font-medium text-foreground">
-                  Data da operacao
-                </span>
-                <Input
-                  type="date"
-                  value={selectedDate}
-                  onChange={(event) => setSelectedDate(event.target.value)}
-                />
-              </label>
+            <div className="flex items-end gap-3">
+              <div className="flex rounded-[var(--radius-control)] border border-border-soft overflow-hidden">
+                <button
+                  type="button"
+                  className={`px-4 py-2 text-sm font-medium transition ${viewMode === "list" ? "bg-accent text-background" : "bg-white/5 text-foreground hover:bg-white/10"}`}
+                  onClick={() => setViewMode("list")}
+                >
+                  Lista
+                </button>
+                <button
+                  type="button"
+                  className={`px-4 py-2 text-sm font-medium transition ${viewMode === "calendar" ? "bg-accent text-background" : "bg-white/5 text-foreground hover:bg-white/10"}`}
+                  onClick={() => setViewMode("calendar")}
+                >
+                  Calendario
+                </button>
+              </div>
+              {viewMode === "list" && (
+                <div className="w-full max-w-xs">
+                  <label className="block space-y-2">
+                    <span className="text-sm font-medium text-foreground">
+                      Data da operacao
+                    </span>
+                    <Input
+                      type="date"
+                      value={selectedDate}
+                      onChange={(event) => setSelectedDate(event.target.value)}
+                    />
+                  </label>
+                </div>
+              )}
             </div>
           </div>
+
+          {viewMode === "calendar" && (
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <Button type="button" variant="secondary" onClick={() => setCalendarDate((d) => {
+                  const m = d.month === 0 ? 11 : d.month - 1;
+                  const y = d.month === 0 ? d.year - 1 : d.year;
+                  return { year: y, month: m };
+                })}>
+                  ‹
+                </Button>
+                <p className="font-semibold text-foreground">
+                  {new Date(calendarDate.year, calendarDate.month).toLocaleDateString("pt-BR", { month: "long", year: "numeric" }).replace(/^\p{Letter}/u, (c) => c.toUpperCase())}
+                </p>
+                <Button type="button" variant="secondary" onClick={() => setCalendarDate((d) => {
+                  const m = d.month === 11 ? 0 : d.month + 1;
+                  const y = d.month === 11 ? d.year + 1 : d.year;
+                  return { year: y, month: m };
+                })}>
+                  ›
+                </Button>
+              </div>
+              {(() => {
+                const { firstDay, daysInMonth, orderCountByDate } = buildCalendarDays(calendarDate.year, calendarDate.month, orders);
+                const today = getTodayDateInSaoPaulo();
+                return (
+                  <div className="grid grid-cols-7 gap-1 text-center">
+                    {["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sab"].map((d) => (
+                      <div key={d} className="py-1 text-xs font-semibold text-text-muted">{d}</div>
+                    ))}
+                    {Array.from({ length: firstDay }, (_, i) => <div key={`e-${i}`} />)}
+                    {Array.from({ length: daysInMonth }, (_, i) => {
+                      const day = i + 1;
+                      const dateKey = `${calendarDate.year}-${String(calendarDate.month + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+                      const count = orderCountByDate.get(dateKey) ?? 0;
+                      const isSelected = dateKey === selectedDate;
+                      const isToday = dateKey === today;
+                      return (
+                        <button
+                          key={day}
+                          type="button"
+                          onClick={() => { setSelectedDate(dateKey); setViewMode("list"); }}
+                          className={`rounded-[var(--radius-control)] py-2 text-sm transition ${isSelected ? "bg-accent text-background font-bold" : isToday ? "border border-accent/40 text-accent" : "hover:bg-white/10 text-foreground"}`}
+                        >
+                          <span className="block">{day}</span>
+                          {count > 0 && <span className="block text-xs font-bold text-accent">{count}</span>}
+                        </button>
+                      );
+                    })}
+                  </div>
+                );
+              })()}
+            </div>
+          )}
 
           <div className="flex flex-wrap gap-3 text-sm text-text-muted">
             <span className="rounded-full border border-border-soft bg-background/25 px-3 py-1">

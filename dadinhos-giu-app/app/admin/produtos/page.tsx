@@ -16,6 +16,8 @@ type Product = {
   stockQuantity: number;
   bulkMinQty: number | null;
   bulkPrice: number | null;
+  imageUrl: string | null;
+  gramWeight: number | null;
   createdAt: string;
 };
 
@@ -30,6 +32,8 @@ type ProductFormState = {
   active: boolean;
   bulkMinQty: string;
   bulkPrice: string;
+  imageUrl: string;
+  gramWeight: string;
 };
 
 const initialFormState: ProductFormState = {
@@ -39,6 +43,8 @@ const initialFormState: ProductFormState = {
   active: true,
   bulkMinQty: "",
   bulkPrice: "",
+  imageUrl: "",
+  gramWeight: "",
 };
 
 function formatPrice(price: number) {
@@ -82,6 +88,8 @@ export default function AdminProdutosPage() {
             active: product.active,
             bulkMinQty: product.bulkMinQty !== null ? String(product.bulkMinQty) : "",
             bulkPrice: product.bulkPrice !== null ? product.bulkPrice.toFixed(2) : "",
+            imageUrl: product.imageUrl ?? "",
+            gramWeight: product.gramWeight !== null ? String(product.gramWeight) : "",
           },
         ]),
       ),
@@ -116,6 +124,8 @@ export default function AdminProdutosPage() {
     const parsedStockQuantity = Number(form.stockQuantity);
     const parsedBulkMinQty = form.bulkMinQty.trim() ? Number(form.bulkMinQty) : null;
     const parsedBulkPrice = form.bulkPrice.trim() ? Number(form.bulkPrice) : null;
+    const trimmedImageUrl = form.imageUrl.trim() || null;
+    const parsedGramWeight = form.gramWeight.trim() ? Number(form.gramWeight) : null;
 
     if (!trimmedName) {
       setErrorMessage("Informe o nome do produto.");
@@ -154,6 +164,8 @@ export default function AdminProdutosPage() {
         active: form.active,
         bulkMinQty: parsedBulkMinQty,
         bulkPrice: parsedBulkPrice,
+        imageUrl: trimmedImageUrl,
+        gramWeight: parsedGramWeight,
       }),
     });
 
@@ -193,6 +205,8 @@ export default function AdminProdutosPage() {
     const parsedStockQuantity = Number(editingForm.stockQuantity);
     const parsedBulkMinQty = editingForm.bulkMinQty.trim() ? Number(editingForm.bulkMinQty) : null;
     const parsedBulkPrice = editingForm.bulkPrice.trim() ? Number(editingForm.bulkPrice) : null;
+    const trimmedImageUrl = editingForm.imageUrl.trim() || null;
+    const parsedGramWeight = editingForm.gramWeight.trim() ? Number(editingForm.gramWeight) : null;
 
     if (!trimmedName) {
       setErrorMessage("Informe o nome do produto.");
@@ -234,6 +248,8 @@ export default function AdminProdutosPage() {
           active: editingForm.active,
           bulkMinQty: parsedBulkMinQty,
           bulkPrice: parsedBulkPrice,
+          imageUrl: trimmedImageUrl,
+          gramWeight: parsedGramWeight,
         }),
       });
 
@@ -263,6 +279,8 @@ export default function AdminProdutosPage() {
           active: updatedProduct.active,
           bulkMinQty: updatedProduct.bulkMinQty !== null ? String(updatedProduct.bulkMinQty) : "",
           bulkPrice: updatedProduct.bulkPrice !== null ? updatedProduct.bulkPrice.toFixed(2) : "",
+          imageUrl: updatedProduct.imageUrl ?? "",
+          gramWeight: updatedProduct.gramWeight !== null ? String(updatedProduct.gramWeight) : "",
         },
       }));
       setSuccessMessage("Produto atualizado com sucesso.");
@@ -395,6 +413,37 @@ export default function AdminProdutosPage() {
                 </label>
               </div>
             </div>
+
+            <label className="block space-y-2">
+              <span className="text-sm font-medium text-foreground">URL da imagem (opcional)</span>
+              <Input
+                placeholder="https://..."
+                value={form.imageUrl}
+                onChange={(event) =>
+                  setForm((current) => ({
+                    ...current,
+                    imageUrl: event.target.value,
+                  }))
+                }
+              />
+            </label>
+
+            <label className="block space-y-2">
+              <span className="text-sm font-medium text-foreground">Peso em gramas (opcional)</span>
+              <Input
+                min="1"
+                placeholder="Ex.: 250"
+                step="1"
+                type="number"
+                value={form.gramWeight}
+                onChange={(event) =>
+                  setForm((current) => ({
+                    ...current,
+                    gramWeight: event.target.value,
+                  }))
+                }
+              />
+            </label>
 
             {errorMessage ? (
               <div className="rounded-[var(--radius-control)] border border-red-300/30 bg-red-950/40 px-4 py-3 text-sm text-red-100">
@@ -604,6 +653,8 @@ export default function AdminProdutosPage() {
                                     active: product.active,
                                     bulkMinQty: product.bulkMinQty !== null ? String(product.bulkMinQty) : "",
                                     bulkPrice: product.bulkPrice !== null ? product.bulkPrice.toFixed(2) : "",
+                                    imageUrl: product.imageUrl ?? "",
+                                    gramWeight: product.gramWeight !== null ? String(product.gramWeight) : "",
                                   }),
                                   bulkMinQty: event.target.value,
                                 },
@@ -630,6 +681,8 @@ export default function AdminProdutosPage() {
                                     active: product.active,
                                     bulkMinQty: product.bulkMinQty !== null ? String(product.bulkMinQty) : "",
                                     bulkPrice: product.bulkPrice !== null ? product.bulkPrice.toFixed(2) : "",
+                                    imageUrl: product.imageUrl ?? "",
+                                    gramWeight: product.gramWeight !== null ? String(product.gramWeight) : "",
                                   }),
                                   bulkPrice: event.target.value,
                                 },
@@ -640,6 +693,51 @@ export default function AdminProdutosPage() {
                       </div>
                       <p className="text-xs text-amber-200/60">Deixe em branco para remover a promocao.</p>
                     </div>
+
+                    <label className="block space-y-2">
+                      <span className="text-xs font-medium text-foreground">URL da imagem (opcional)</span>
+                      <Input
+                        placeholder="https://..."
+                        value={editingForms[product.id]?.imageUrl ?? ""}
+                        onChange={(event) =>
+                          setEditingForms((current) => ({
+                            ...current,
+                            [product.id]: {
+                              ...(current[product.id] ?? {
+                                name: product.name, price: product.price.toFixed(2),
+                                stockQuantity: String(product.stockQuantity), active: product.active,
+                                bulkMinQty: "", bulkPrice: "", imageUrl: "", gramWeight: "",
+                              }),
+                              imageUrl: event.target.value,
+                            },
+                          }))
+                        }
+                      />
+                    </label>
+
+                    <label className="block space-y-2">
+                      <span className="text-xs font-medium text-foreground">Peso em gramas (opcional)</span>
+                      <Input
+                        min="1"
+                        placeholder="Ex.: 250"
+                        step="1"
+                        type="number"
+                        value={editingForms[product.id]?.gramWeight ?? ""}
+                        onChange={(event) =>
+                          setEditingForms((current) => ({
+                            ...current,
+                            [product.id]: {
+                              ...(current[product.id] ?? {
+                                name: product.name, price: product.price.toFixed(2),
+                                stockQuantity: String(product.stockQuantity), active: product.active,
+                                bulkMinQty: "", bulkPrice: "", imageUrl: "", gramWeight: "",
+                              }),
+                              gramWeight: event.target.value,
+                            },
+                          }))
+                        }
+                      />
+                    </label>
 
                     <Button
                       disabled={savingProductId === product.id}

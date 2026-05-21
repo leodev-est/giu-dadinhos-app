@@ -10,6 +10,7 @@ import {
   useState,
   useTransition,
 } from "react";
+import { useOrderNotifications } from "@/hooks/use-order-notifications";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import {
@@ -37,6 +38,7 @@ type Order = {
     receiptNote?: string | null;
   } | null;
   totalPrice: number;
+  isFirstOrder?: boolean;
   desiredDate?: string | null;
   zipCode?: string | null;
   street?: string | null;
@@ -127,6 +129,7 @@ export default function AdminPedidosPage() {
   const [isPending, startTransition] = useTransition();
   const deferredSearchTerm = useDeferredValue(searchTerm);
   const pollingInFlightRef = useRef(false);
+  useOrderNotifications(orders);
   const highlightTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const ordersRef = useRef<Order[]>([]);
 
@@ -360,6 +363,31 @@ export default function AdminPedidosPage() {
     setPendingOrderId(null);
   }
 
+  function exportCSV() {
+    const rows = filteredOrders.map((order) => [
+      order.id,
+      order.customer.name,
+      order.customer.phone,
+      orderStatusConfig[order.status].label,
+      formatDeliveryMethodLabel(order.deliveryMethod),
+      order.paymentMethod ?? "",
+      order.payment?.status ?? "",
+      order.totalPrice.toFixed(2),
+      order.desiredDate ?? "",
+      formatDate(order.createdAt),
+      order.isFirstOrder ? "Sim" : "Nao",
+    ]);
+    const header = ["ID", "Cliente", "Telefone", "Status", "Recebimento", "Pagamento", "Status Pag.", "Total", "Para quando", "Criado em", "Primeiro pedido"];
+    const csv = [header, ...rows].map((row) => row.map((cell) => `"${String(cell).replace(/"/g, '""')}"`).join(",")).join("\n");
+    const blob = new Blob(["﻿" + csv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `pedidos-${new Date().toISOString().slice(0, 10)}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
   function clearFilters() {
     setSearchTerm("");
     setStatusFilter("ALL");
@@ -434,9 +462,14 @@ export default function AdminPedidosPage() {
               title="Operacao dos pedidos"
               subtitle="Acompanhe pedidos reais e atualize o status diretamente pela interface."
             />
-            <span className="rounded-full border border-border-strong bg-background/25 px-3 py-1 text-sm font-medium text-text-muted">
-              {filteredOrders.length} de {orders.length} pedido(s)
-            </span>
+            <div className="flex items-center gap-3">
+              <span className="rounded-full border border-border-strong bg-background/25 px-3 py-1 text-sm font-medium text-text-muted">
+                {filteredOrders.length} de {orders.length} pedido(s)
+              </span>
+              <Button type="button" variant="secondary" onClick={exportCSV} disabled={filteredOrders.length === 0}>
+                Exportar CSV
+              </Button>
+            </div>
           </div>
           <p className="mt-3 text-sm text-text-muted">
             Atualizacao automatica a cada 5 segundos
@@ -652,6 +685,11 @@ export default function AdminPedidosPage() {
                           {order.customer.name}
                         </h2>
                         <StatusBadge status={order.status} />
+                        {order.isFirstOrder && (
+                          <span className="rounded-full bg-blue-950/60 px-2 py-0.5 text-xs font-medium text-blue-300">
+                            1º pedido
+                          </span>
+                        )}
                       </div>
 
                       <div className="grid gap-2 text-sm text-text-muted sm:grid-cols-2">

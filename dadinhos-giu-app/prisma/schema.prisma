@@ -31,13 +31,50 @@ enum PaymentStatus {
   EXPIRED
 }
 
-model Customer {
-  id        String   @id @default(uuid())
-  name      String
-  phone     String   @unique
-  createdAt DateTime @default(now())
+enum CouponType {
+  PERCENTAGE
+  FIXED
+}
 
-  orders    Order[]
+model AppSetting {
+  key   String @id
+  value String
+}
+
+model Customer {
+  id          String   @id @default(uuid())
+  name        String
+  phone       String   @unique
+  createdAt   DateTime @default(now())
+
+  orders      Order[]
+  loyaltyCard LoyaltyCard?
+}
+
+model LoyaltyCard {
+  id              String   @id @default(uuid())
+  customerId      String   @unique
+  totalGrams      Int      @default(0)
+  stars           Int      @default(0)
+  redeemedRewards Int      @default(0)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  customer        Customer @relation(fields: [customerId], references: [id])
+}
+
+model Coupon {
+  id         String     @id @default(uuid())
+  code       String     @unique
+  type       CouponType
+  value      Decimal    @db.Decimal(10, 2)
+  active     Boolean    @default(true)
+  maxUsage   Int?
+  usageCount Int        @default(0)
+  expiresAt  DateTime?
+  createdAt  DateTime   @default(now())
+
+  orders     Order[]
 }
 
 model Product {
@@ -48,34 +85,41 @@ model Product {
   stockQuantity Int      @default(0)
   bulkMinQty    Int?
   bulkPrice     Decimal? @db.Decimal(10, 2)
+  imageUrl      String?
+  gramWeight    Int?
   createdAt     DateTime @default(now())
 
   items     OrderItem[]
 }
 
 model Order {
-  id         String      @id @default(uuid())
-  customerId String
-  status     OrderStatus @default(PENDING)
-  deliveryMethod DeliveryMethod @default(DELIVERY)
-  deliveryOrder Int?
-  paymentMethod PaymentMethod @default(PIX)
-  paymentStatus PaymentStatus @default(PENDING)
-  paidAt DateTime?
+  id                 String        @id @default(uuid())
+  customerId         String
+  status             OrderStatus   @default(PENDING)
+  deliveryMethod     DeliveryMethod @default(DELIVERY)
+  deliveryOrder      Int?
+  paymentMethod      PaymentMethod  @default(PIX)
+  paymentStatus      PaymentStatus  @default(PENDING)
+  paidAt             DateTime?
   paymentReceiptNote String?
-  totalPrice Decimal     @db.Decimal(10, 2)
-  desiredDate String?
-  zipCode String?
-  street String?
-  neighborhood String?
-  city String?
-  state String?
-  addressNumber String?
-  addressComplement String?
-  notes      String?
-  createdAt  DateTime    @default(now())
+  totalPrice         Decimal        @db.Decimal(10, 2)
+  deliveryFee        Decimal?       @db.Decimal(10, 2)
+  couponId           String?
+  couponDiscount     Decimal?       @db.Decimal(10, 2)
+  isFirstOrder       Boolean        @default(false)
+  desiredDate        String?
+  zipCode            String?
+  street             String?
+  neighborhood       String?
+  city               String?
+  state              String?
+  addressNumber      String?
+  addressComplement  String?
+  notes              String?
+  createdAt          DateTime       @default(now())
 
   customer   Customer    @relation(fields: [customerId], references: [id])
+  coupon     Coupon?     @relation(fields: [couponId], references: [id])
   items      OrderItem[]
 
   @@index([customerId, createdAt])
