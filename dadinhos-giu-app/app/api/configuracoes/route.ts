@@ -3,9 +3,11 @@ import { z } from "zod";
 
 export const dynamic = "force-dynamic";
 
+type AppSettingRecord = { key: string; value: string };
+
 export async function GET() {
   try {
-    const settings = await prisma.appSetting.findMany();
+    const settings = (await prisma.appSetting.findMany()) as AppSettingRecord[];
 
     const result: Record<string, string> = {};
     for (const setting of settings) {
@@ -42,11 +44,11 @@ export async function PATCH(request: Request) {
 
     const { key, value } = parsed.data;
 
-    const setting = await prisma.appSetting.upsert({
+    const setting = (await prisma.appSetting.upsert({
       where: { key },
       update: { value },
       create: { key, value },
-    });
+    })) as AppSettingRecord;
 
     return Response.json({ key: setting.key, value: setting.value });
   } catch (error) {
