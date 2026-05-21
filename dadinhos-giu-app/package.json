@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "prisma migrate resolve --rolled-back 20260521120000_feature_batch || true && prisma migrate deploy && next build",
+    "build": "DATABASE_URL=$DIRECT_DATABASE_URL prisma migrate resolve --rolled-back 20260521120000_feature_batch || true && DATABASE_URL=$DIRECT_DATABASE_URL prisma migrate deploy && next build",
     "start": "next start",
     "lint": "eslint",
     "seed": "node prisma/seed.mjs",
