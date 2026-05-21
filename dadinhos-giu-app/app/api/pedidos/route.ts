@@ -265,8 +265,9 @@ export async function POST(request: Request) {
         0,
       );
 
+      type LoyaltyCardRow = { totalGrams: number; stars: number };
       if (totalGramsThisOrder > 0) {
-        const existing = await tx.loyaltyCard.findUnique({ where: { customerId: customer.id } });
+        const existing = (await tx.loyaltyCard.findUnique({ where: { customerId: customer.id } })) as LoyaltyCardRow | null;
         if (existing) {
           const newTotalGrams = existing.totalGrams + totalGramsThisOrder;
           await tx.loyaltyCard.update({
